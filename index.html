@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#07060f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="description" content="縫夜 -NUIYO- 指でなぞった光の糸で夜を縫う、10分完結の2Dローグライト。">
+<title>縫夜 -NUIYO-</title>
+<style>
+:root{
+  --void:#07060f; --void2:#0d0b1c; --ink:#161233;
+  --thread:#ffd98a; --thread2:#7df0ff; --blood:#ff4d6d;
+  --paper:#e8e3f5; --dim:#8a83ad;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
+  font-family:"Hiragino Kaku Gothic ProN","Yu Gothic","Noto Sans JP",system-ui,-apple-system,sans-serif;
+  -webkit-user-select:none;user-select:none;touch-action:none;overscroll-behavior:none}
+#stage{position:fixed;inset:0;display:block;width:100%;height:100%}
+.layer{position:fixed;inset:0;pointer-events:none;z-index:10}
+.on{pointer-events:auto}
+.hide{display:none !important}
+
+/* ---------- HUD ---------- */
+#hud{z-index:12}
+#hud .top{position:absolute;top:calc(var(--safe-t) + 10px);left:0;right:0;
+  display:flex;align-items:flex-start;justify-content:space-between;padding:0 14px}
+#hearts{display:flex;gap:5px;filter:drop-shadow(0 0 6px #ff4d6d66)}
+.heart{width:13px;height:13px;border-radius:50%;background:var(--blood);
+  box-shadow:0 0 8px #ff4d6d;transition:.2s}
+.heart.off{background:#2a2540;box-shadow:none;transform:scale(.7)}
+#clock{font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;
+  font-weight:700;text-align:center;text-shadow:0 0 12px #7df0ff55}
+#clock small{display:block;font-size:9px;letter-spacing:.35em;color:var(--dim);font-weight:400;margin-top:1px}
+#score{font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;text-align:right;color:var(--thread);
+  text-shadow:0 0 10px #ffd98a55}
+#score small{display:block;font-size:9px;letter-spacing:.2em;color:var(--dim);font-weight:400}
+
+#chain{position:absolute;top:22%;left:50%;transform:translate(-50%,-50%) scale(.4);
+  font-size:52px;font-weight:900;opacity:0;letter-spacing:-.02em;
+  color:#fff;text-shadow:0 0 24px var(--thread),0 0 60px #ff9d4d;white-space:nowrap}
+#chain b{font-size:26px;vertical-align:.35em;letter-spacing:.1em}
+#chain.pop{animation:chainPop .5s cubic-bezier(.2,1.6,.4,1) forwards}
+@keyframes chainPop{0%{opacity:0;transform:translate(-50%,-50%) scale(.3) rotate(-6deg)}
+ 25%{opacity:1;transform:translate(-50%,-50%) scale(1.15) rotate(2deg)}
+ 60%{opacity:1;transform:translate(-50%,-50%) scale(1)}
+ 100%{opacity:0;transform:translate(-50%,-56%) scale(1)}}
+
+#lvwrap{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 8px);padding:0 14px}
+#lvbar{height:4px;background:#1a1633;border-radius:99px;overflow:hidden;position:relative}
+#lvfill{height:100%;width:0%;border-radius:99px;
+  background:linear-gradient(90deg,#7df0ff,#ffd98a);box-shadow:0 0 12px #7df0ffaa;transition:width .12s linear}
+#lvtxt{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.18em;color:var(--dim);margin-bottom:5px}
+#lvtxt b{color:var(--thread2);font-weight:700}
+
+#unravel{position:absolute;right:16px;bottom:calc(var(--safe-b) + 34px);
+  width:58px;height:58px;border-radius:50%;opacity:.6;transition:opacity .3s}
+#unravel.ready{opacity:1;animation:breathe 1.2s ease-in-out infinite}
+@keyframes breathe{50%{filter:drop-shadow(0 0 16px #ffd98a)}}
+#unravel .k{position:absolute;inset:4px;border-radius:50%;background:#0a0818;
+  display:grid;place-items:center;font-size:21px;font-weight:700;color:#4a4470}
+#unravel.ready .k{color:#fff;text-shadow:0 0 14px var(--thread)}
+
+#toast{position:absolute;left:50%;bottom:calc(var(--safe-b) + 78px);transform:translateX(-50%);
+  font-size:12px;letter-spacing:.16em;color:var(--dim);opacity:0;transition:opacity .4s;text-align:center;
+  background:#0a0818cc;padding:7px 16px;border-radius:99px;border:1px solid #ffffff10;white-space:nowrap}
+#toast.show{opacity:1}
+
+#pause{position:absolute;top:calc(var(--safe-t) + 46px);left:50%;transform:translateX(-50%);
+  width:66px;height:30px;background:none;border:none;color:#6b6590;font:inherit;
+  font-size:13px;letter-spacing:.2em;cursor:pointer;opacity:.5}
+
+/* ---------- 汎用スクリーン ---------- */
+.screen{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;padding:24px;
+  background:radial-gradient(125% 85% at 50% 8%,rgba(23,18,54,.72) 0%,rgba(7,6,15,.88) 60%);
+  animation:fade .45s ease both}
+@keyframes fade{from{opacity:0}to{opacity:1}}
+.brand{text-align:center;margin-bottom:6px}
+.brand h1{font-size:clamp(46px,17vw,84px);font-weight:900;letter-spacing:.14em;line-height:1;
+  background:linear-gradient(180deg,#fff 10%,var(--thread) 55%,#ff9d4d 100%);
+  -webkit-background-clip:text;background-clip:text;color:transparent;
+  filter:drop-shadow(0 0 26px #ffd98a55)}
+.brand .sub{font-size:11px;letter-spacing:.62em;color:var(--thread2);margin-top:10px;text-indent:.62em}
+.brand .tag{font-size:11.5px;letter-spacing:.1em;color:var(--dim);margin-top:16px;line-height:1.9}
+
+.btn{pointer-events:auto;border:none;font:inherit;cursor:pointer;
+  background:linear-gradient(135deg,#ffd98a,#ff9d4d);color:#160f04;
+  font-weight:900;letter-spacing:.28em;text-indent:.28em;font-size:15px;
+  padding:16px 46px;border-radius:99px;box-shadow:0 6px 30px #ffb35a55,0 0 0 1px #ffffff40 inset;
+  transition:transform .12s}
+.btn:active{transform:scale(.95)}
+.btn.ghost{background:transparent;color:var(--dim);box-shadow:0 0 0 1px #ffffff18 inset;
+  font-size:11px;letter-spacing:.2em;padding:11px 26px;font-weight:600}
+
+/* 型セレクト */
+.styles{display:flex;gap:9px;margin:26px 0 22px;width:100%;max-width:420px}
+.style{flex:1;pointer-events:auto;cursor:pointer;background:#ffffff06;border:1px solid #ffffff14;
+  border-radius:14px;padding:13px 6px;text-align:center;transition:.18s;position:relative;overflow:hidden}
+.style .g{font-size:27px;font-weight:900;color:var(--paper);line-height:1.1}
+.style .n{font-size:10px;letter-spacing:.14em;color:var(--dim);margin-top:5px}
+.style .d{font-size:9.5px;color:#6b6590;margin-top:6px;line-height:1.55}
+.style.sel{background:#ffd98a12;border-color:#ffd98a88;box-shadow:0 0 22px #ffd98a2e}
+.style.sel .g{color:var(--thread);text-shadow:0 0 16px #ffd98a}
+.style.sel .n{color:var(--thread)}
+
+/* ---------- レベルアップ カード ---------- */
+#levelup{z-index:30;background:#05040bd9;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
+  display:flex;flex-direction:column;justify-content:flex-end;padding:20px 14px calc(var(--safe-b) + 20px)}
+#levelup .lh{text-align:center;margin-bottom:16px}
+#levelup .lh .l1{font-size:11px;letter-spacing:.5em;color:var(--thread2);text-indent:.5em}
+#levelup .lh .l2{font-size:30px;font-weight:900;letter-spacing:.1em;margin-top:4px;
+  color:#fff;text-shadow:0 0 22px #7df0ff88}
+.cards{display:flex;flex-direction:column;gap:10px;max-width:460px;width:100%;margin:0 auto}
+.card{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:14px;
+  background:linear-gradient(100deg,#14102b,#0c0a1c);border:1px solid #ffffff16;
+  border-radius:16px;padding:14px 16px;transition:transform .12s;position:relative;overflow:hidden;
+  animation:cardIn .34s cubic-bezier(.2,1.3,.4,1) both}
+.card:nth-child(2){animation-delay:.06s}.card:nth-child(3){animation-delay:.12s}
+@keyframes cardIn{from{opacity:0;transform:translateY(26px) scale(.96)}to{opacity:1;transform:none}}
+.card:active{transform:scale(.97)}
+.card .glyph{flex:0 0 50px;height:50px;border-radius:13px;display:grid;place-items:center;
+  font-size:25px;font-weight:900;background:#ffffff08}
+.card .tx{flex:1;min-width:0}
+.card .tt{font-size:16px;font-weight:800;letter-spacing:.08em}
+.card .dd{font-size:11.5px;color:var(--dim);margin-top:4px;line-height:1.5}
+.card .lvl{font-size:9px;letter-spacing:.14em;color:#5d5786;margin-top:5px}
+.card::before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px}
+.card.r0::before{background:#7df0ff}.card.r0 .glyph{color:#7df0ff;box-shadow:0 0 0 1px #7df0ff33 inset}
+.card.r1::before{background:#c08cff}.card.r1 .glyph{color:#c08cff;box-shadow:0 0 0 1px #c08cff33 inset}
+.card.r1 .tt{color:#e0ccff}
+.card.r2::before{background:#ffd98a}.card.r2 .glyph{color:#ffd98a;box-shadow:0 0 0 1px #ffd98a44 inset}
+.card.r2{background:linear-gradient(100deg,#2a1f10,#0c0a1c);border-color:#ffd98a3d}
+.card.r2 .tt{color:#ffd98a}
+
+/* ---------- 結果 ---------- */
+#result .rank{font-size:clamp(80px,26vw,130px);font-weight:900;line-height:.9;
+  background:linear-gradient(180deg,#fff,var(--thread) 60%,#ff9d4d);
+  -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 30px #ffd98a66)}
+#result .verdict{font-size:13px;letter-spacing:.42em;text-indent:.42em;margin-top:2px;color:var(--thread2)}
+#result .flavor{font-size:11.5px;color:var(--dim);margin-top:14px;text-align:center;line-height:1.9;max-width:330px}
+.stats{width:100%;max-width:340px;margin:22px 0 24px}
+.stat{display:flex;justify-content:space-between;align-items:baseline;
+  padding:9px 2px;border-bottom:1px solid #ffffff0d;font-size:12px;letter-spacing:.1em;color:var(--dim)}
+.stat b{font-size:17px;font-weight:800;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:0}
+.stat.hi b{color:var(--thread);text-shadow:0 0 14px #ffd98a55}
+.newbest{font-size:10px;letter-spacing:.3em;color:#160f04;background:var(--thread);
+  padding:2px 8px;border-radius:99px;margin-left:8px;font-weight:800;vertical-align:2px}
+.row{display:flex;gap:10px;align-items:center}
+
+#howto{max-width:400px;font-size:12px;line-height:2.1;color:var(--dim);letter-spacing:.05em}
+#howto h3{font-size:11px;letter-spacing:.4em;color:var(--thread);margin-bottom:14px;text-indent:.4em}
+#howto em{color:var(--paper);font-style:normal;font-weight:700}
+#howto .sep{height:1px;background:#ffffff10;margin:14px 0}
+</style>
+</head>
+<body>
+<canvas id="stage"></canvas>
+
+<!-- HUD -->
+<div id="hud" class="layer hide">
+  <div class="top">
+    <div id="hearts"></div>
+    <div id="clock">00:00<small>NUIYO</small></div>
+    <div id="score">0<small>SCORE</small></div>
+  </div>
+  <div id="chain"></div>
+  <div id="unravel"><div class="k">解</div></div>
+  <div id="toast"></div>
+  <div id="lvwrap">
+    <div id="lvtxt"><span>LV <b id="lvnum">1</b></span><span id="killnum">0 縫</span></div>
+    <div id="lvbar"><div id="lvfill"></div></div>
+  </div>
+  <button id="pause" class="on" aria-label="ポーズ">‖</button>
+</div>
+
+<!-- タイトル -->
+<div id="title" class="screen">
+  <div class="brand">
+    <h1>縫夜</h1>
+    <div class="sub">NUIYO</div>
+    <div class="tag">夜は綻び、綻びからは獣が滴る。<br>お前の指先だけが、まだ光の糸を引ける。</div>
+  </div>
+  <div class="styles" id="styles"></div>
+  <button class="btn on" id="startBtn">縫 い 始 め る</button>
+  <div class="row" style="margin-top:18px">
+    <button class="btn ghost on" id="howBtn">遊 び 方</button>
+    <button class="btn ghost on" id="muteBtn">♪ ON</button>
+  </div>
+  <div style="font-size:10px;letter-spacing:.2em;color:#4a4470;margin-top:22px" id="bestLine"></div>
+</div>
+
+<!-- 遊び方 -->
+<div id="help" class="screen hide">
+  <div id="howto">
+    <h3>縫 い 方</h3>
+    <div><em>①</em> 画面をどこでも押さえて、指を滑らせる。<br>離すまで、その方向へ走り続ける。</div>
+    <div class="sep"></div>
+    <div><em>②</em> 走った跡には<em>光の糸</em>が残る。<br>糸が<em>自分と交差して輪を閉じた瞬間</em>、<br>輪の内側にいた獣は<em>全て縫い落とされる</em>。</div>
+    <div class="sep"></div>
+    <div><em>③</em> 大きく囲むほど威力が上がる。<br>続けざまに閉じれば<em>連鎖</em>が乗り、倍率は跳ね上がる。</div>
+    <div class="sep"></div>
+    <div><em>※</em> 大きく囲むほど、糸は多く食われる。<br>使い切った糸は、走りながら伸び直す。</div>
+    <div class="sep"></div>
+    <div><em>④</em> 「解」が満ちたら<em>短く画面を叩く</em>。<br>夜が裂け、時が緩み、糸を引き直せる。</div>
+    <div class="sep"></div>
+    <div><em>⑤</em> 10分。獣の主を縫い切れば夜明けだ。</div>
+  </div>
+  <button class="btn on" id="helpBack" style="margin-top:28px">戻 る</button>
+</div>
+
+<!-- レベルアップ -->
+<div id="levelup" class="layer hide">
+  <div class="lh"><div class="l1">THREAD WOVEN</div><div class="l2" id="luTitle">糸を編む</div></div>
+  <div class="cards" id="cards"></div>
+</div>
+
+<!-- ポーズ -->
+<div id="paused" class="screen hide">
+  <div class="brand"><h1 style="font-size:44px">休</h1><div class="sub">PAUSED</div></div>
+  <div style="height:26px"></div>
+  <button class="btn on" id="resumeBtn">続 け る</button>
+  <div style="height:12px"></div>
+  <button class="btn ghost on" id="quitBtn">諦 め る</button>
+</div>
+
+<!-- 結果 -->
+<div id="result" class="screen hide">
+  <div class="rank" id="rank">A</div>
+  <div class="verdict" id="verdict">夜明け</div>
+  <div class="flavor" id="flavor"></div>
+  <div class="stats" id="stats"></div>
+  <button class="btn on" id="againBtn">も う 一 度</button>
+  <div style="height:12px"></div>
+  <button class="btn ghost on" id="titleBtn">題 名 へ</button>
+</div>
+
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
