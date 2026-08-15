@@ -1,0 +1,12 @@
+{
+  "name": "nuiyo",
+  "version": "0.1.0",
+  "description": "縫夜 -NUIYO- 指でなぞった光の糸で夜を縫う、10分完結のモバイル2Dローグライト",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node tools/serve.mjs",
+    "build": "node tools/build.mjs"
+  },
+  "engines": { "node": ">=18" }
+}
