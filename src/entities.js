@@ -286,10 +286,19 @@ export class Swarm {
         if (!d.stand || e.lunge > 0 || e.elite) {
           G.hurtPlayer(e);
         } else {
-          // 重ならない程度に分けるだけ。強く押すと群れが散って手応えが消える
+          // 重なりを解くだけ。速度には触らない。
+          //
+          // ここを速度への加算にすると、接触している間ずっと毎フレーム
+          // 足され続け、減衰と釣り合う定常速度が敵自身の速度の十数倍に達する。
+          // 結果、獣が針から猛烈に弾き飛ばされ「近づくと逃げる」ように見えていた。
+          // 位置をずらすだけなら、押し合いへし合いしながら寄り続ける。
           const ox = e.x - px, oy = e.y - py;
           const od = Math.hypot(ox, oy) || 1;
-          e.vx += (ox / od) * 105; e.vy += (oy / od) * 105;
+          const overlap = rr - od;
+          if (overlap > 0) {
+            e.x += (ox / od) * overlap;
+            e.y += (oy / od) * overlap;
+          }
         }
       }
 
