@@ -493,17 +493,24 @@ export class Game {
     this.thread.p = this.thread.p.slice(this.thread.p.length - keep);
     // ひるみ：触れた瞬間に周囲の獣を押し退ける。
     // これが無いと群れの中で連続被弾し、立て直す隙が生まれない。
+    // 立て直す隙は「止める」で作り、「吹き飛ばす」では作らない。
+    //
+    // 以前は半径110pxへ520の速度を加えていたため、被弾のたびに周囲の群れが
+    // まとめて外へ飛び、それが数秒おきに起きる＝「獣が針から逃げ続ける」
+    // ように見えていた（計測では針の60px以内で毎秒131体が外向きに弾かれていた）。
+    // 硬直だけでも隙は足りるので、押しは重なりを解く程度に留める。
+    const R = 78;
     const q = [];
-    this.swarm.grid.query(p.x - 110, p.y - 110, p.x + 110, p.y + 110, q);
+    this.swarm.grid.query(p.x - R, p.y - R, p.x + R, p.y + R, q);
     for (let i = 0; i < q.length; i++) {
       const e = this.swarm.a[q[i]];
       if (!e.on) continue;
       const dx = e.x - p.x, dy = e.y - p.y;
       const d = Math.hypot(dx, dy);
-      if (d > 110 || d < 0.01) continue;
-      const k = (1 - d / 110) * 760 * this.stats.flinch;
+      if (d > R || d < 0.01) continue;
+      const k = (1 - d / R) * 150 * this.stats.flinch;
       e.vx += (dx / d) * k; e.vy += (dy / d) * k;
-      e.frozen = Math.max(e.frozen, 0.36);   // 押した直後に戻られると隙にならない
+      e.frozen = Math.max(e.frozen, 0.45);   // 止まっている間に抜ける
     }
 
     sfxHurt();
