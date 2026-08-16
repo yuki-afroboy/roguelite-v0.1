@@ -282,25 +282,16 @@ export class Swarm {
       // 針は布を裂かずに分けて進む、という筋も通る。
       // 痛いのは跳びかかってきた個体・精鋭・専門種だけ。
       const rr = e.r * 0.78 + G.player.r * 0.8;
-      if (dist2(e.x, e.y, px, py) < rr * rr) {
-        if (!d.stand || e.lunge > 0 || e.elite) {
-          G.hurtPlayer(e);
-        } else {
-          // 重なりを解くだけ。速度には触らない。
-          //
-          // ここを速度への加算にすると、接触している間ずっと毎フレーム
-          // 足され続け、減衰と釣り合う定常速度が敵自身の速度の十数倍に達する。
-          // 結果、獣が針から猛烈に弾き飛ばされ「近づくと逃げる」ように見えていた。
-          // 位置をずらすだけなら、押し合いへし合いしながら寄り続ける。
-          const ox = e.x - px, oy = e.y - py;
-          const od = Math.hypot(ox, oy) || 1;
-          const overlap = rr - od;
-          if (overlap > 0) {
-            e.x += (ox / od) * overlap;
-            e.y += (oy / od) * overlap;
-          }
-        }
+      if (dist2(e.x, e.y, px, py) < rr * rr && (!d.stand || e.lunge > 0 || e.elite)) {
+        G.hurtPlayer(e);
       }
+      // 針は獣を押しのけない。すり抜ける。
+      //
+      // 以前はここで押し出していた（速度加算 → 位置補正と直したが、どちらも同じ）。
+      // 押し出しがあると、まっすぐ突っ込んだ獣が毎フレーム接触半径の外へ
+      // 追い出され、実測で1回の突進につき 121px も押し流されていた。
+      // 「敵に体当たりしたのにするりと避けられる」の正体がこれ。
+      // 触れても痛くない仕組みは上の分岐だけで足りるので、物理的な排除は持たない。
 
       // 針先の熱
       if (G.stats.needle > 0 && G.thread.touchesHot(e.x, e.y, e.r + 7)) {
