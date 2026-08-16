@@ -59,8 +59,8 @@ export const LOOM = [
     d: r => `輪が閉じる距離 +${r * 3}px`, apply: (s, r) => { s.snap += r * 3; } },
 
   // 針 ── 生存
-  { id: 'maxHp', br: '針', g: '殻', n: '堅殻', max: 4, step: 1,
-    d: r => `最大HP +${r}`, apply: (s, r) => { s.maxHp += r; } },
+  { id: 'maxHp', br: '針', g: '殻', n: '堅殻', max: 4, step: 3,
+    d: r => `最大HP +${r * 3}`, apply: (s, r) => { s.maxHp += r * 3; } },
   { id: 'iframe', br: '針', g: '軽', n: '軽身', max: 3, step: 0.12,
     d: r => `被弾後の無敵 +${(r * 0.12).toFixed(2)}秒`, apply: (s, r) => { s.iframe += r * 0.12; } },
   { id: 'speed', br: '針', g: '疾', n: '疾走', max: 3, step: 0.03,
@@ -118,8 +118,8 @@ export const GEAR = {
     { id: 'plain', n: '常針', g: '常', d: '癖のない針', cost: 0, night: 0, apply: () => {} },
     { id: 'burn', n: '灼針', g: '灼', d: '針先が灼く（+18/秒）。ただし、ひるみで押し退けられなくなる',
       cost: 10, night: 3, apply: s => { s.needle += 18; s.flinch = 0.35; } },
-    { id: 'swift', n: '疾針', g: '疾', d: '移動速度 +12% / 最大HP −1',
-      cost: 10, night: 2, apply: s => { s.speed *= 1.12; s.maxHp -= 1; } },
+    { id: 'swift', n: '疾針', g: '疾', d: '移動速度 +12% / 最大HP −4',
+      cost: 10, night: 2, apply: s => { s.speed *= 1.12; s.maxHp -= 4; } },
   ],
   thread: [
     { id: 'plain', n: '常糸', g: '常', d: '癖のない糸', cost: 0, night: 0, apply: () => {} },

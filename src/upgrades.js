@@ -12,7 +12,7 @@ export function baseStats() {
     magnet: 96,        // 光の吸引半径
     chainWindow: 3.4,  // 連鎖の猶予(秒)
     chainMax: 6,
-    maxHp: 8,
+    maxHp: 26,      // 触れれば減るので、点ではなく量で受ける
     iframe: 1.6,
     needle: 0,         // 針先の接触DPS
     lure: 0,           // 敵を寄せる度合い
@@ -31,21 +31,7 @@ export function baseStats() {
   };
 }
 
-/** 開始時に選ぶ「縫い型」 */
-export const STYLES = [
-  {
-    id: 'swift', g: '疾', n: '疾 型', d: '速いが糸は短い',
-    apply: s => { s.speed *= 1.16; s.threadPts = Math.round(s.threadPts * 0.86); },
-  },
-  {
-    id: 'long', g: '長', n: '長 型', d: '糸は長いが鈍い',
-    apply: s => { s.threadPts = Math.round(s.threadPts * 1.34); s.speed *= 0.92; },
-  },
-  {
-    id: 'keen', g: '鋭', n: '鋭 型', d: '鋭いが脆い',
-    apply: s => { s.dmg *= 1.45; s.maxHp -= 2; s.needle = 6; },
-  },
-];
+// 開始時の「縫い型」は装備（針/糸/環）に置き換わったので、ここには無い。
 
 const R = { COMMON: 0, RARE: 1, EPIC: 2 };
 
@@ -71,8 +57,8 @@ export const CARDS = [
     apply: s => { s.chainWindow += 0.55; s.chainMax += 2; } },
 
   { id: 'hp', g: '殻', n: '堅殻', r: R.COMMON, max: 4, w: 7,
-    d: () => '最大HP +1（全快する）',
-    apply: s => { s.maxHp += 1; } },
+    d: () => '最大HP +4（全快する）',
+    apply: s => { s.maxHp += 4; } },
 
   { id: 'area', g: '輪', n: '大輪', r: R.RARE, max: 4, w: 6,
     d: () => '広く囲むほどの威力補正 +55%',
@@ -135,8 +121,8 @@ export const RARITY_NAME = ['常', '稀', '極'];
  */
 export const FILLERS = [
   { id: 'patch', g: '繕', n: '繕い', r: R.COMMON, max: Infinity, w: 1,
-    d: () => 'HP を1回復し、縫撃の威力 +6%',
-    apply: s => { s.dmg *= 1.06; s.heal = (s.heal || 0) + 1; } },
+    d: () => 'HP を4回復し、縫撃の威力 +6%',
+    apply: s => { s.dmg *= 1.06; s.heal = (s.heal || 0) + 4; } },
   { id: 'gleam', g: '灯', n: '灯し', r: R.COMMON, max: Infinity, w: 1,
     d: () => '移動速度 +3% / 糸の長さ +4%',
     apply: s => { s.speed *= 1.03; s.threadPts = Math.round(s.threadPts * 1.04); } },

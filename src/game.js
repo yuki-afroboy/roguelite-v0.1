@@ -567,11 +567,12 @@ export class Game {
     this.levels[card.id] = (this.levels[card.id] || 0) + 1;
     card.apply(this.stats);
 
-    // 糸を編み直すたび、綻びも1つ繕われる。
+    // 糸を編み直すたび、綻びも繕われる。
     // 10分の運びに対して回復手段が皆無で、6回被弾した時点で終わっていた
     // （計測では全モデルが6回被弾＝40〜60秒で死亡）。成長と回復を同じ動作に束ねる。
+    // 最大HPの割合で回復するので、織機で「堅殻」を積むほど立て直しも効く。
     const before = this.player.hp;
-    this.player.hp = Math.min(this.stats.maxHp, this.player.hp + 1);
+    this.player.hp = Math.min(this.stats.maxHp, this.player.hp + Math.ceil(this.stats.maxHp * 0.18));
     if (card.id === 'hp') this.player.hp = this.stats.maxHp;
     if (this.stats.heal) {
       this.player.hp = Math.min(this.stats.maxHp, this.player.hp + this.stats.heal);

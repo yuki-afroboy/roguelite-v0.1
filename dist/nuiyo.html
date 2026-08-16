@@ -30,10 +30,15 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 #hud{z-index:12}
 #hud .top{position:absolute;top:calc(var(--safe-t) + 10px);left:0;right:0;
   display:flex;align-items:flex-start;justify-content:space-between;padding:0 14px}
-#hearts{display:flex;gap:5px;flex-wrap:wrap;max-width:38%;filter:drop-shadow(0 0 6px #ff4d6d66)}
-.heart{width:13px;height:13px;border-radius:50%;background:var(--blood);
-  box-shadow:0 0 8px #ff4d6d;transition:.2s}
-.heart.off{background:#2a2540;box-shadow:none;transform:scale(.7)}
+#hearts{width:104px;padding-top:2px}
+#hpbar{height:7px;border-radius:99px;background:#2a1520;overflow:hidden;
+  box-shadow:0 0 0 1px #ffffff12 inset}
+#hpfill{height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#ff4d6d,#ff8a9c);
+  box-shadow:0 0 10px #ff4d6daa;transition:width .18s ease-out}
+#hpfill.low{background:linear-gradient(90deg,#ff2d4d,#ff6d7d);animation:hpPulse .7s ease-in-out infinite}
+@keyframes hpPulse{50%{opacity:.55}}
+#hptxt{font-size:9px;letter-spacing:.14em;color:var(--dim);margin-top:3px;
+  font-variant-numeric:tabular-nums}
 #clock{font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;
   font-weight:700;text-align:center;text-shadow:0 0 12px #7df0ff55}
 #clock small{display:block;font-size:9px;letter-spacing:.28em;color:var(--dim);font-weight:400;margin-top:1px}
@@ -261,7 +266,7 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 <!-- HUD -->
 <div id="hud" class="layer hide">
   <div class="top">
-    <div id="hearts"></div>
+    <div id="hearts"><div id="hpbar"><div id="hpfill"></div></div><div id="hptxt">26 / 26</div></div>
     <div id="clock">00:00<small>のこり</small></div>
     <div id="purse"><b id="hudLumen">0</b><small>光糸</small><span class="dw hide" id="hudDew">露 0</span></div>
   </div>
@@ -1378,11 +1383,9 @@ class Swarm {
         }
       } else {
         // 獣は間合いを取らない。常にこちらへ押し寄せる。
-        //
-        // 「触れているだけでは痛くない」を入れたとき、一緒に後退挙動も
-        // 入れてしまい、近づくと逃げていく＝手応えのない群れになっていた。
-        // 削られない仕組みは接触判定側（下の hurtPlayer 分岐）だけで足りるので、
-        // 動きは素直に「寄ってくる」へ戻す。痛いのは跳びかかった一瞬だけ。
+        // 一度ここに後退挙動を入れたことがあり、近づくと逃げていく＝
+        // 手応えのない群れになっていた。跳びかかりは「速くなる」だけで、
+        // 離れる動きは持たせない。
         const stand = d.stand || 0;
         if (stand > 0) {
           e.cd -= dt;
@@ -1424,25 +1427,16 @@ class Swarm {
       // 遠く離れすぎた個体は回収（画面外で無限に彷徨わせない）
       if (dist2(e.x, e.y, px, py) > 1700 * 1700) { e.on = false; this.alive--; continue; }
 
-      // 接触。
+      // 接触。触れたら減る。種類も跳びかかり中かも問わない。
       //
-      // 「囲む」には必ず群れの中へ戻る必要があり、群れは常にこちらへ寄ってくる。
-      // つまり回り込む動線上には必ず体が置かれる ── これは間合いを調整しても
-      // 消えない、機構そのものが持つ幾何。実測でも被弾の 100% が基本種だった。
-      // そこで基本種の「ただ触れているだけ」は痛くせず、押しのけて通す。
-      // 針は布を裂かずに分けて進む、という筋も通る。
-      // 痛いのは跳びかかってきた個体・精鋭・専門種だけ。
+      // かつて「跳びかかった個体だけが痛い」という規則を置いていたが、
+      // 正面から体当たりしても何も起きず、壊れているようにしか見えなかった。
+      // 削られ過ぎる問題は、無敵時間・同時に跳びかかれる数の上限・最大HP・
+      // レベルアップ回復で別に解いてあるので、この規則はもう要らない。
+      //
+      // 針は獣を押しのけない（すり抜ける）。押し出すと体当たりが成立しない。
       const rr = e.r * 0.78 + G.player.r * 0.8;
-      if (dist2(e.x, e.y, px, py) < rr * rr && (!d.stand || e.lunge > 0 || e.elite)) {
-        G.hurtPlayer(e);
-      }
-      // 針は獣を押しのけない。すり抜ける。
-      //
-      // 以前はここで押し出していた（速度加算 → 位置補正と直したが、どちらも同じ）。
-      // 押し出しがあると、まっすぐ突っ込んだ獣が毎フレーム接触半径の外へ
-      // 追い出され、実測で1回の突進につき 121px も押し流されていた。
-      // 「敵に体当たりしたのにするりと避けられる」の正体がこれ。
-      // 触れても痛くない仕組みは上の分岐だけで足りるので、物理的な排除は持たない。
+      if (dist2(e.x, e.y, px, py) < rr * rr) G.hurtPlayer(e);
 
       // 針先の熱
       if (G.stats.needle > 0 && G.thread.touchesHot(e.x, e.y, e.r + 7)) {
@@ -1821,7 +1815,7 @@ function baseStats() {
     magnet: 96,        // 光の吸引半径
     chainWindow: 3.4,  // 連鎖の猶予(秒)
     chainMax: 6,
-    maxHp: 8,
+    maxHp: 26,      // 触れれば減るので、点ではなく量で受ける
     iframe: 1.6,
     needle: 0,         // 針先の接触DPS
     lure: 0,           // 敵を寄せる度合い
@@ -1840,21 +1834,7 @@ function baseStats() {
   };
 }
 
-/** 開始時に選ぶ「縫い型」 */
-const STYLES = [
-  {
-    id: 'swift', g: '疾', n: '疾 型', d: '速いが糸は短い',
-    apply: s => { s.speed *= 1.16; s.threadPts = Math.round(s.threadPts * 0.86); },
-  },
-  {
-    id: 'long', g: '長', n: '長 型', d: '糸は長いが鈍い',
-    apply: s => { s.threadPts = Math.round(s.threadPts * 1.34); s.speed *= 0.92; },
-  },
-  {
-    id: 'keen', g: '鋭', n: '鋭 型', d: '鋭いが脆い',
-    apply: s => { s.dmg *= 1.45; s.maxHp -= 2; s.needle = 6; },
-  },
-];
+// 開始時の「縫い型」は装備（針/糸/環）に置き換わったので、ここには無い。
 
 const R = { COMMON: 0, RARE: 1, EPIC: 2 };
 
@@ -1880,8 +1860,8 @@ const CARDS = [
     apply: s => { s.chainWindow += 0.55; s.chainMax += 2; } },
 
   { id: 'hp', g: '殻', n: '堅殻', r: R.COMMON, max: 4, w: 7,
-    d: () => '最大HP +1（全快する）',
-    apply: s => { s.maxHp += 1; } },
+    d: () => '最大HP +4（全快する）',
+    apply: s => { s.maxHp += 4; } },
 
   { id: 'area', g: '輪', n: '大輪', r: R.RARE, max: 4, w: 6,
     d: () => '広く囲むほどの威力補正 +55%',
@@ -1944,8 +1924,8 @@ const RARITY_NAME = ['常', '稀', '極'];
  */
 const FILLERS = [
   { id: 'patch', g: '繕', n: '繕い', r: R.COMMON, max: Infinity, w: 1,
-    d: () => 'HP を1回復し、縫撃の威力 +6%',
-    apply: s => { s.dmg *= 1.06; s.heal = (s.heal || 0) + 1; } },
+    d: () => 'HP を4回復し、縫撃の威力 +6%',
+    apply: s => { s.dmg *= 1.06; s.heal = (s.heal || 0) + 4; } },
   { id: 'gleam', g: '灯', n: '灯し', r: R.COMMON, max: Infinity, w: 1,
     d: () => '移動速度 +3% / 糸の長さ +4%',
     apply: s => { s.speed *= 1.03; s.threadPts = Math.round(s.threadPts * 1.04); } },
@@ -1983,7 +1963,7 @@ function drawCards(levels, n = 3) {
 const NIGHTS = [
   {
     id: 1, name: '初めの綻び', sub: 'まず、囲む',
-    dur: 150, baseHp: 1.00, ramp: 0.0016, targetLv: 6, xpScale: 4.3, lumenRate: 0.22, dewRate: 0,
+    dur: 150, baseHp: 1.00, ramp: 0.0016, targetLv: 6, xpScale: 6.3, lumenRate: 0.22, dewRate: 0,
     // 実機で「1種類・低密度の2分半は退屈」と分かったので、
     // 群れを厚くし、後半に疾を出して手触りを変える。
     dens: { base: 30, growth: 0.30, cap: 88 },
@@ -2011,7 +1991,7 @@ const NIGHTS = [
   },
   {
     id: 3, name: '裂ける夜', sub: '二度縫う',
-    dur: 225, baseHp: 1.20, ramp: 0.0017, targetLv: 10, xpScale: 8.0, lumenRate: 0.13, dewRate: 0.005,
+    dur: 225, baseHp: 1.34, ramp: 0.0017, targetLv: 10, xpScale: 6.5, lumenRate: 0.13, dewRate: 0.005,
     dens: { base: 34, growth: 0.36, cap: 120 },
     ceil: { base: 2.4, growth: 0.046 },
     kinds: [
@@ -2025,7 +2005,7 @@ const NIGHTS = [
   },
   {
     id: 4, name: '間合いの夜', sub: '弾を払う',
-    dur: 240, baseHp: 1.32, ramp: 0.0018, targetLv: 12, xpScale: 9.4, lumenRate: 0.12, dewRate: 0.004,
+    dur: 240, baseHp: 1.62, ramp: 0.0018, targetLv: 12, xpScale: 5.85, lumenRate: 0.12, dewRate: 0.004,
     dens: { base: 29, growth: 0.28, cap: 105 },
     ceil: { base: 2.7, growth: 0.050 },
     kinds: [
@@ -2041,7 +2021,7 @@ const NIGHTS = [
   },
   {
     id: 5, name: '織主・綻', sub: '硬い相手を崩す',
-    dur: 300, baseHp: 1.45, ramp: 0.0019, targetLv: 15, xpScale: 4.3, lumenRate: 0.17, dewRate: 0.005,
+    dur: 300, baseHp: 1.95, ramp: 0.0019, targetLv: 15, xpScale: 3.6, lumenRate: 0.17, dewRate: 0.005,
     dens: { base: 30, growth: 0.30, cap: 112 },
     ceil: { base: 3.0, growth: 0.056 },
     kinds: [
@@ -2051,8 +2031,8 @@ const NIGHTS = [
       { k: 'toga', at: 75, w0: 1.2, wg: 0.005 },
       { k: 'yoroi', at: 70, w0: 1.6, wg: 0.007 },
     ],
-    // 制限時間の 45% 地点で出現。倒しても夜は続き、時間まで生き延びれば突破
-    boss: { at: 0.45, hp: 2300, name: '織主・綻', final: true },
+    // 制限時間の 45% 地点で出現。織主を倒せば突破、時間切れは失敗
+    boss: { at: 0.45, hp: 2900, name: '織主・綻', final: true },
     reward: { clear: 300, firstCores: 2 },
     teach: '鎧と織主は、一縫では落ちない',
   },
@@ -2133,8 +2113,8 @@ const LOOM = [
     d: r => `輪が閉じる距離 +${r * 3}px`, apply: (s, r) => { s.snap += r * 3; } },
 
   // 針 ── 生存
-  { id: 'maxHp', br: '針', g: '殻', n: '堅殻', max: 4, step: 1,
-    d: r => `最大HP +${r}`, apply: (s, r) => { s.maxHp += r; } },
+  { id: 'maxHp', br: '針', g: '殻', n: '堅殻', max: 4, step: 3,
+    d: r => `最大HP +${r * 3}`, apply: (s, r) => { s.maxHp += r * 3; } },
   { id: 'iframe', br: '針', g: '軽', n: '軽身', max: 3, step: 0.12,
     d: r => `被弾後の無敵 +${(r * 0.12).toFixed(2)}秒`, apply: (s, r) => { s.iframe += r * 0.12; } },
   { id: 'speed', br: '針', g: '疾', n: '疾走', max: 3, step: 0.03,
@@ -2192,8 +2172,8 @@ const GEAR = {
     { id: 'plain', n: '常針', g: '常', d: '癖のない針', cost: 0, night: 0, apply: () => {} },
     { id: 'burn', n: '灼針', g: '灼', d: '針先が灼く（+18/秒）。ただし、ひるみで押し退けられなくなる',
       cost: 10, night: 3, apply: s => { s.needle += 18; s.flinch = 0.35; } },
-    { id: 'swift', n: '疾針', g: '疾', d: '移動速度 +12% / 最大HP −1',
-      cost: 10, night: 2, apply: s => { s.speed *= 1.12; s.maxHp -= 1; } },
+    { id: 'swift', n: '疾針', g: '疾', d: '移動速度 +12% / 最大HP −4',
+      cost: 10, night: 2, apply: s => { s.speed *= 1.12; s.maxHp -= 4; } },
   ],
   thread: [
     { id: 'plain', n: '常糸', g: '常', d: '癖のない糸', cost: 0, night: 0, apply: () => {} },
@@ -2852,11 +2832,12 @@ class Game {
     this.levels[card.id] = (this.levels[card.id] || 0) + 1;
     card.apply(this.stats);
 
-    // 糸を編み直すたび、綻びも1つ繕われる。
+    // 糸を編み直すたび、綻びも繕われる。
     // 10分の運びに対して回復手段が皆無で、6回被弾した時点で終わっていた
     // （計測では全モデルが6回被弾＝40〜60秒で死亡）。成長と回復を同じ動作に束ねる。
+    // 最大HPの割合で回復するので、織機で「堅殻」を積むほど立て直しも効く。
     const before = this.player.hp;
-    this.player.hp = Math.min(this.stats.maxHp, this.player.hp + 1);
+    this.player.hp = Math.min(this.stats.maxHp, this.player.hp + Math.ceil(this.stats.maxHp * 0.18));
     if (card.id === 'hp') this.player.hp = this.stats.maxHp;
     if (this.stats.heal) {
       this.player.hp = Math.min(this.stats.maxHp, this.player.hp + this.stats.heal);
@@ -3164,7 +3145,7 @@ let toastT = 0;
 let heartN = 0;
 
 function initUI() {
-  for (const id of ['hud', 'hearts', 'clock', 'purse', 'hudLumen', 'hudDew', 'chain', 'unravel', 'toast',
+  for (const id of ['hud', 'hearts', 'hpbar', 'hpfill', 'hptxt', 'clock', 'purse', 'hudLumen', 'hudDew', 'chain', 'unravel', 'toast',
     'lvnum', 'killnum', 'lvfill', 'title', 'help', 'levelup', 'cards', 'luTitle',
     'result', 'rank', 'verdict', 'rNight', 'loot', 'unlockBox', 'stats', 'paused',
     'base', 'basePurse', 'baseSub', 'nightsel', 'nsPurse', 'nightList',
@@ -3187,22 +3168,20 @@ function paintPurse(save) {
 }
 
 // --- HUD -------------------------------------------------------------------
-function buildHearts(n) {
-  el.hearts.innerHTML = '';
-  for (let i = 0; i < n; i++) {
-    const d = document.createElement('div');
-    d.className = 'heart';
-    el.hearts.appendChild(d);
-  }
-  heartN = n;
-}
+// HPは点ではなく量で持つ（触れれば減るため数十単位になる）ので、棒で見せる
+function buildHearts(n) { heartN = n; }
 
-let lastLumen = -1, lastDew = -1, lastKills = -1, lastLv = -1, lastSec = -1, lastChain = 0;
+let lastHp = -1, lastLumen = -1, lastDew = -1, lastKills = -1, lastLv = -1, lastSec = -1, lastChain = 0;
 
 function updateHUD(G, dt) {
-  if (heartN !== G.stats.maxHp) buildHearts(G.stats.maxHp);
-  const hs = el.hearts.children;
-  for (let i = 0; i < hs.length; i++) hs[i].classList.toggle('off', i >= G.player.hp);
+  const hp = Math.max(0, G.player.hp), mx = Math.max(1, G.stats.maxHp);
+  if (hp !== lastHp || mx !== heartN) {
+    lastHp = hp; heartN = mx;
+    const f = clamp(hp / mx, 0, 1);
+    el.hpfill.style.width = f * 100 + '%';
+    el.hpfill.classList.toggle('low', f <= 0.3);
+    el.hptxt.textContent = `${Math.ceil(hp)} / ${mx}`;
+  }
 
   // 残り時間。夜には終わりがあることを常に見せる
   const left = Math.ceil(G.timeLeft);
@@ -3246,7 +3225,7 @@ function toast(msg, t = 2.4) {
 }
 
 function resetHUD() {
-  lastLumen = -1; lastDew = -1; lastKills = -1; lastLv = -1; lastSec = -1; lastChain = 0;
+  lastHp = -1; lastLumen = -1; lastDew = -1; lastKills = -1; lastLv = -1; lastSec = -1; lastChain = 0;
   el.chain.classList.remove('pop');
   el.toast.classList.remove('show');
   el.hudDew.classList.add('hide');

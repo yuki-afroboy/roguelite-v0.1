@@ -30,10 +30,15 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 #hud{z-index:12}
 #hud .top{position:absolute;top:calc(var(--safe-t) + 10px);left:0;right:0;
   display:flex;align-items:flex-start;justify-content:space-between;padding:0 14px}
-#hearts{display:flex;gap:5px;flex-wrap:wrap;max-width:38%;filter:drop-shadow(0 0 6px #ff4d6d66)}
-.heart{width:13px;height:13px;border-radius:50%;background:var(--blood);
-  box-shadow:0 0 8px #ff4d6d;transition:.2s}
-.heart.off{background:#2a2540;box-shadow:none;transform:scale(.7)}
+#hearts{width:104px;padding-top:2px}
+#hpbar{height:7px;border-radius:99px;background:#2a1520;overflow:hidden;
+  box-shadow:0 0 0 1px #ffffff12 inset}
+#hpfill{height:100%;width:100%;border-radius:99px;background:linear-gradient(90deg,#ff4d6d,#ff8a9c);
+  box-shadow:0 0 10px #ff4d6daa;transition:width .18s ease-out}
+#hpfill.low{background:linear-gradient(90deg,#ff2d4d,#ff6d7d);animation:hpPulse .7s ease-in-out infinite}
+@keyframes hpPulse{50%{opacity:.55}}
+#hptxt{font-size:9px;letter-spacing:.14em;color:var(--dim);margin-top:3px;
+  font-variant-numeric:tabular-nums}
 #clock{font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;
   font-weight:700;text-align:center;text-shadow:0 0 12px #7df0ff55}
 #clock small{display:block;font-size:9px;letter-spacing:.28em;color:var(--dim);font-weight:400;margin-top:1px}
@@ -261,7 +266,7 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 <!-- HUD -->
 <div id="hud" class="layer hide">
   <div class="top">
-    <div id="hearts"></div>
+    <div id="hearts"><div id="hpbar"><div id="hpfill"></div></div><div id="hptxt">26 / 26</div></div>
     <div id="clock">00:00<small>のこり</small></div>
     <div id="purse"><b id="hudLumen">0</b><small>光糸</small><span class="dw hide" id="hudDew">露 0</span></div>
   </div>
