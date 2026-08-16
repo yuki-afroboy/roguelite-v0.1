@@ -15,7 +15,7 @@
 export const NIGHTS = [
   {
     id: 1, name: '初めの綻び', sub: 'まず、囲む',
-    dur: 150, baseHp: 1.00, ramp: 0.0016, targetLv: 6, xpScale: 4.3, lumenRate: 0.22, dewRate: 0,
+    dur: 150, baseHp: 1.00, ramp: 0.0016, targetLv: 6, xpScale: 6.3, lumenRate: 0.22, dewRate: 0,
     // 実機で「1種類・低密度の2分半は退屈」と分かったので、
     // 群れを厚くし、後半に疾を出して手触りを変える。
     dens: { base: 30, growth: 0.30, cap: 88 },
@@ -43,7 +43,7 @@ export const NIGHTS = [
   },
   {
     id: 3, name: '裂ける夜', sub: '二度縫う',
-    dur: 225, baseHp: 1.20, ramp: 0.0017, targetLv: 10, xpScale: 8.0, lumenRate: 0.13, dewRate: 0.005,
+    dur: 225, baseHp: 1.34, ramp: 0.0017, targetLv: 10, xpScale: 6.5, lumenRate: 0.13, dewRate: 0.005,
     dens: { base: 34, growth: 0.36, cap: 120 },
     ceil: { base: 2.4, growth: 0.046 },
     kinds: [
@@ -57,7 +57,7 @@ export const NIGHTS = [
   },
   {
     id: 4, name: '間合いの夜', sub: '弾を払う',
-    dur: 240, baseHp: 1.32, ramp: 0.0018, targetLv: 12, xpScale: 9.4, lumenRate: 0.12, dewRate: 0.004,
+    dur: 240, baseHp: 1.62, ramp: 0.0018, targetLv: 12, xpScale: 5.85, lumenRate: 0.12, dewRate: 0.004,
     dens: { base: 29, growth: 0.28, cap: 105 },
     ceil: { base: 2.7, growth: 0.050 },
     kinds: [
@@ -73,7 +73,7 @@ export const NIGHTS = [
   },
   {
     id: 5, name: '織主・綻', sub: '硬い相手を崩す',
-    dur: 300, baseHp: 1.45, ramp: 0.0019, targetLv: 15, xpScale: 4.3, lumenRate: 0.17, dewRate: 0.005,
+    dur: 300, baseHp: 1.95, ramp: 0.0019, targetLv: 15, xpScale: 3.6, lumenRate: 0.17, dewRate: 0.005,
     dens: { base: 30, growth: 0.30, cap: 112 },
     ceil: { base: 3.0, growth: 0.056 },
     kinds: [
@@ -83,8 +83,8 @@ export const NIGHTS = [
       { k: 'toga', at: 75, w0: 1.2, wg: 0.005 },
       { k: 'yoroi', at: 70, w0: 1.6, wg: 0.007 },
     ],
-    // 制限時間の 45% 地点で出現。倒しても夜は続き、時間まで生き延びれば突破
-    boss: { at: 0.45, hp: 2300, name: '織主・綻', final: true },
+    // 制限時間の 45% 地点で出現。織主を倒せば突破、時間切れは失敗
+    boss: { at: 0.45, hp: 2900, name: '織主・綻', final: true },
     reward: { clear: 300, firstCores: 2 },
     teach: '鎧と織主は、一縫では落ちない',
   },

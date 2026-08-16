@@ -15,7 +15,7 @@ let toastT = 0;
 let heartN = 0;
 
 export function initUI() {
-  for (const id of ['hud', 'hearts', 'clock', 'purse', 'hudLumen', 'hudDew', 'chain', 'unravel', 'toast',
+  for (const id of ['hud', 'hearts', 'hpbar', 'hpfill', 'hptxt', 'clock', 'purse', 'hudLumen', 'hudDew', 'chain', 'unravel', 'toast',
     'lvnum', 'killnum', 'lvfill', 'title', 'help', 'levelup', 'cards', 'luTitle',
     'result', 'rank', 'verdict', 'rNight', 'loot', 'unlockBox', 'stats', 'paused',
     'base', 'basePurse', 'baseSub', 'nightsel', 'nsPurse', 'nightList',
@@ -38,22 +38,20 @@ function paintPurse(save) {
 }
 
 // --- HUD -------------------------------------------------------------------
-export function buildHearts(n) {
-  el.hearts.innerHTML = '';
-  for (let i = 0; i < n; i++) {
-    const d = document.createElement('div');
-    d.className = 'heart';
-    el.hearts.appendChild(d);
-  }
-  heartN = n;
-}
+// HPは点ではなく量で持つ（触れれば減るため数十単位になる）ので、棒で見せる
+export function buildHearts(n) { heartN = n; }
 
-let lastLumen = -1, lastDew = -1, lastKills = -1, lastLv = -1, lastSec = -1, lastChain = 0;
+let lastHp = -1, lastLumen = -1, lastDew = -1, lastKills = -1, lastLv = -1, lastSec = -1, lastChain = 0;
 
 export function updateHUD(G, dt) {
-  if (heartN !== G.stats.maxHp) buildHearts(G.stats.maxHp);
-  const hs = el.hearts.children;
-  for (let i = 0; i < hs.length; i++) hs[i].classList.toggle('off', i >= G.player.hp);
+  const hp = Math.max(0, G.player.hp), mx = Math.max(1, G.stats.maxHp);
+  if (hp !== lastHp || mx !== heartN) {
+    lastHp = hp; heartN = mx;
+    const f = clamp(hp / mx, 0, 1);
+    el.hpfill.style.width = f * 100 + '%';
+    el.hpfill.classList.toggle('low', f <= 0.3);
+    el.hptxt.textContent = `${Math.ceil(hp)} / ${mx}`;
+  }
 
   // 残り時間。夜には終わりがあることを常に見せる
   const left = Math.ceil(G.timeLeft);
@@ -97,7 +95,7 @@ export function toast(msg, t = 2.4) {
 }
 
 export function resetHUD() {
-  lastLumen = -1; lastDew = -1; lastKills = -1; lastLv = -1; lastSec = -1; lastChain = 0;
+  lastHp = -1; lastLumen = -1; lastDew = -1; lastKills = -1; lastLv = -1; lastSec = -1; lastChain = 0;
   el.chain.classList.remove('pop');
   el.toast.classList.remove('show');
   el.hudDew.classList.add('hide');
