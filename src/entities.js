@@ -14,6 +14,9 @@ export const KIND = {
   yoroi: { k: '鎧', hp: 92, r: 19, spd: 52, col: [255, 196, 107], xp: 6, sc: 70, ai: 'chase', armor: 0.45, stand: 54 },
 };
 
+// 同時に跳びかかれる獣の数。群れの厚みと被弾率を切り離すための上限。
+const LUNGE_LIMIT = 3;
+
 // --- スプライト焼き付け ----------------------------------------------------
 const sprites = new Map();
 
@@ -169,10 +172,12 @@ export class Swarm {
     grid.clear();
     const a = this.a;
 
+    let lunging = 0;
     for (let i = 0; i < this.cap; i++) {
       const e = a[i];
       if (!e.on) continue;
       grid.insert(i, e.x, e.y);
+      if (e.lunge > 0) lunging++;
     }
 
     const lure = G.stats.lure;
@@ -221,23 +226,25 @@ export class Swarm {
           G.bullets.spawn(e.x, e.y, dx * 118, dy * 118, 8, [255, 107, 107]);
         }
       } else {
-        // 間合いを取り、時折だけ跳びかかる。
+        // 獣は間合いを取らない。常にこちらへ押し寄せる。
         //
-        // 以前は距離に関係なく直進してきたため、囲むために回り込む動線上へ
-        // 常に体が置かれ、触れ続けて削られていた（計測では被弾の 45/45 件が
-        // この基本種で、上手く回している最中でも約2秒に1回当たっていた）。
-        // 接触を「連続的な摩耗」から「読み取れる一瞬」に変える。
+        // 「触れているだけでは痛くない」を入れたとき、一緒に後退挙動も
+        // 入れてしまい、近づくと逃げていく＝手応えのない群れになっていた。
+        // 削られない仕組みは接触判定側（下の hurtPlayer 分岐）だけで足りるので、
+        // 動きは素直に「寄ってくる」へ戻す。痛いのは跳びかかった一瞬だけ。
         const stand = d.stand || 0;
         if (stand > 0) {
           e.cd -= dt;
-          if (e.cd <= 0) { e.cd = rnd(2.4, 4.2); e.lunge = 0.5; }
+          if (e.cd <= 0) {
+            if (lunging < LUNGE_LIMIT) { e.cd = rnd(2.2, 3.8); e.lunge = 0.5; lunging++; }
+            else e.cd = 0.25;                    // 順番待ち
+          }
           if (e.lunge > 0) e.lunge -= dt;
         }
-        const closing = stand === 0 || e.lunge > 0 || dl > stand;
-        const sway = Math.sin(e.t * 1.6 + e.v) * (closing ? 0.28 : 0.95);
-        const push = closing ? 1 : -0.3;
-        ax = (dx * push - dy * sway) * spd;
-        ay = (dy * push + dx * sway) * spd;
+        const sway = Math.sin(e.t * 1.6 + e.v) * 0.28;
+        const surge = e.lunge > 0 ? 1.55 : 1;      // 跳びかかりは速い＝見て分かる
+        ax = (dx - dy * sway) * spd * surge;
+        ay = (dy + dx * sway) * spd * surge;
         e.vx = damp(e.vx, ax, 5, dt); e.vy = damp(e.vy, ay, 5, dt);
       }
 
@@ -279,9 +286,10 @@ export class Swarm {
         if (!d.stand || e.lunge > 0 || e.elite) {
           G.hurtPlayer(e);
         } else {
+          // 重ならない程度に分けるだけ。強く押すと群れが散って手応えが消える
           const ox = e.x - px, oy = e.y - py;
           const od = Math.hypot(ox, oy) || 1;
-          e.vx += (ox / od) * 300; e.vy += (oy / od) * 300;
+          e.vx += (ox / od) * 105; e.vy += (oy / od) * 105;
         }
       }
 
