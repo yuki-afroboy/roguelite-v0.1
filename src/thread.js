@@ -7,8 +7,8 @@ import { segIntersect, polyArea2, pointSegDist2, TAU, clamp, lerp } from './util
 const SPACING = 7;          // 節の間隔(px)。糸の長さ = maxPts * SPACING
 const MIN_AREA = 950;       // これ未満の輪は「よれ」として無視（誤爆防止）
 const SKIP = 2;             // 直近の節との交差は無視
-const SNAP = 24;            // 「あと少しで閉じる」を閉じたことにする距離
-const SNAP2 = SNAP * SNAP;
+const SNAP_DEFAULT = 24;    // 「あと少しで閉じる」を閉じたことにする距離
+                            // 装備で変わるため this.snap で持つ（判定式は不変）
 
 export class Thread {
   constructor() {
@@ -17,6 +17,7 @@ export class Thread {
     this.hot = 9;           // 先端の何節が「熱を持つ」か（接触ダメージ）
     this.age = 0;
     this.hx = 0; this.hy = 0; // 針そのものの位置（節と節の間を埋める）
+    this.snap = SNAP_DEFAULT;
   }
 
   reset(x, y) { this.p.length = 0; this.p.push(x, y); this.hx = x; this.hy = y; }
@@ -63,6 +64,7 @@ export class Thread {
     if (n < 10) return null;
     const ax = p[n - 4], ay = p[n - 3], bx = p[n - 2], by = p[n - 1];
     const last = n - 4 - SKIP * 2;
+    const snap2 = this.snap * this.snap;
 
     for (let i = 0; i < last; i += 2) {
       const cx = p[i], cy = p[i + 1], dx = p[i + 2], dy = p[i + 3];
@@ -72,7 +74,7 @@ export class Thread {
       if (hit) {
         X = hit.x; Y = hit.y;
       } else {
-        if (pointSegDist2(bx, by, cx, cy, dx, dy) > SNAP2) continue;
+        if (pointSegDist2(bx, by, cx, cy, dx, dy) > snap2) continue;
         // 線分上の最近点へ寄せて、そこで閉じたことにする
         const ex = dx - cx, ey = dy - cy;
         const len2 = ex * ex + ey * ey;
@@ -140,7 +142,7 @@ export class Thread {
 
       const d = Math.sqrt(pointSegDist2(hx, hy, cx, cy, dx, dy));
       // 0=遠い 1=触れる寸前。これがそのまま表示の濃さになる
-      return { flat, area, x: X, y: Y, near: clamp(1 - (d - SNAP) / (range - SNAP), 0, 1) };
+      return { flat, area, x: X, y: Y, near: clamp(1 - (d - this.snap) / (range - this.snap), 0, 1) };
     }
     return null;
   }

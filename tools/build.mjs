@@ -14,7 +14,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 // 依存順（下ほど上に依存する）
 const ORDER = [
   'util.js', 'audio.js', 'input.js', 'fx.js', 'thread.js',
-  'entities.js', 'upgrades.js', 'game.js', 'ui.js', 'main.js',
+  'entities.js', 'upgrades.js', 'nights.js', 'meta.js', 'game.js', 'ui.js', 'main.js',
 ];
 
 const IMPORT_RE = /^[ \t]*import\s+[\s\S]*?from\s+['"][^'"]*['"];?[ \t]*$/gm;

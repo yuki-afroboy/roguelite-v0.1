@@ -12,8 +12,8 @@ export function baseStats() {
     magnet: 96,        // 光の吸引半径
     chainWindow: 3.4,  // 連鎖の猶予(秒)
     chainMax: 6,
-    maxHp: 6,
-    iframe: 1.15,
+    maxHp: 8,
+    iframe: 1.6,
     needle: 0,         // 針先の接触DPS
     lure: 0,           // 敵を寄せる度合い
     pierce: false,     // 鎧無視
@@ -25,6 +25,9 @@ export function baseStats() {
     moteMul: 1,
     doubleStitch: 0,   // 領域内への追撃回数
     twin: 0,           // 縫閉時、自分の周りにも輪が生まれる
+    snap: 24,          // 輪が閉じたことにする距離(px)。装備「霞糸」が触る
+    startGauge: 0,     // 「解」の初期充填
+    flinch: 1,         // 被弾時に敵を押し退ける強さの倍率
   };
 }
 

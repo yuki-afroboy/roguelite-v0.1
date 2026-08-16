@@ -7,11 +7,11 @@ import { fxBurst, fxSoul, fxRing, fxShake } from './fx.js';
 // 走れば必ず背後に尾を引いて群れが繋がる ── その尾を巻き取るのがこのゲームの気持ち良さ。
 export const KIND = {
   hotsure: { k: '綻', hp: 7, r: 11, spd: 78, col: [157, 140, 255], xp: 1, sc: 10, ai: 'chase', stand: 42 },
-  shitsu: { k: '疾', hp: 5, r: 9.5, spd: 112, col: [125, 240, 255], xp: 1, sc: 14, ai: 'dash' },
-  retsu: { k: '裂', hp: 16, r: 15, spd: 76, col: [255, 138, 208], xp: 2, sc: 24, ai: 'chase', split: 3, stand: 48 },
-  kake: { k: '欠', hp: 4, r: 7, spd: 124, col: [255, 176, 224], xp: 1, sc: 6, ai: 'chase' },
+  shitsu: { k: '疾', hp: 5, r: 9.5, spd: 94, col: [125, 240, 255], xp: 1, sc: 14, ai: 'dash' },
+  retsu: { k: '裂', hp: 16, r: 15, spd: 76, col: [255, 138, 208], xp: 2, sc: 24, ai: 'chase', split: 2, stand: 48 },
+  kake: { k: '欠', hp: 4, r: 7, spd: 124, col: [255, 176, 224], xp: 1, sc: 6, ai: 'chase', stand: 30 },
   toga: { k: '咎', hp: 14, r: 13, spd: 58, col: [255, 107, 107], xp: 3, sc: 32, ai: 'ranged' },
-  yoroi: { k: '鎧', hp: 54, r: 19, spd: 52, col: [255, 196, 107], xp: 6, sc: 70, ai: 'chase', armor: 0.45 },
+  yoroi: { k: '鎧', hp: 92, r: 19, spd: 52, col: [255, 196, 107], xp: 6, sc: 70, ai: 'chase', armor: 0.45, stand: 54 },
 };
 
 // --- スプライト焼き付け ----------------------------------------------------
@@ -194,10 +194,20 @@ export class Swarm {
       const spd = e.spd * (1 + lure * 0.15) * G.slowFactorFor(e);
 
       if (d.ai === 'dash') {
+        // 突進の前に溜めを置く。溜め中は膨れて見えるので（draw 側）、
+        // 「来る」ことが読めてから来る。予告なしの突進は夜3以降で被弾の
+        // 3〜6割を占めていたため、避けられる形に変えた。
         e.cd -= dt;
-        if (e.cd <= 0) { e.cd = rnd(1.1, 1.9); e.vx = dx * spd * 2.6; e.vy = dy * spd * 2.6; }
-        ax = dx * spd * 0.8; ay = dy * spd * 0.8;
-        e.vx = damp(e.vx, ax, 3.2, dt); e.vy = damp(e.vy, ay, 3.2, dt);
+        if (e.lunge > 0) {
+          e.lunge -= dt;
+          e.vx = damp(e.vx, 0, 8, dt); e.vy = damp(e.vy, 0, 8, dt);
+          if (e.lunge <= 0) { e.vx = dx * spd * 1.9; e.vy = dy * spd * 1.9; }
+        } else if (e.cd <= 0) {
+          e.cd = rnd(1.5, 2.3); e.lunge = 0.3;
+        } else {
+          e.vx = damp(e.vx, dx * spd * 0.7, 3.2, dt);
+          e.vy = damp(e.vy, dy * spd * 0.7, 3.2, dt);
+        }
       } else if (d.ai === 'ranged') {
         const want = 200;
         const push = dl > want ? 1 : -1.15;
@@ -207,8 +217,8 @@ export class Swarm {
         e.vx = damp(e.vx, ax, 4, dt); e.vy = damp(e.vy, ay, 4, dt);
         e.cd -= dt;
         if (e.cd <= 0 && dl < 460) {
-          e.cd = rnd(2.0, 3.0);
-          G.bullets.spawn(e.x, e.y, dx * 155, dy * 155, 7, [255, 107, 107]);
+          e.cd = rnd(2.9, 4.1);
+          G.bullets.spawn(e.x, e.y, dx * 118, dy * 118, 8, [255, 107, 107]);
         }
       } else {
         // 間合いを取り、時折だけ跳びかかる。
@@ -386,21 +396,28 @@ export class Bullets {
   }
 }
 
-// --- 光（経験値） -----------------------------------------------------------
+// --- 落ちるもの（光・光糸・霧の露） -----------------------------------------
+// kind 0=光(その場の経験値) 1=光糸(持ち帰る通貨) 2=霧の露(章素材)
+// 拾った瞬間に「今回のための光」か「持ち帰れるもの」か分かることが要件なので、
+// 色だけでなく形も変えている。光=菱形、光糸=糸巻き、露=雫。
+export const MOTE_XP = 0, MOTE_LUMEN = 1, MOTE_DEW = 2;
+
 export class Motes {
   constructor(cap = 900) {
     this.a = [];
-    for (let i = 0; i < cap; i++) this.a.push({ on: false, x: 0, y: 0, vx: 0, vy: 0, v: 1, t: 0, pull: false });
+    for (let i = 0; i < cap; i++) {
+      this.a.push({ on: false, x: 0, y: 0, vx: 0, vy: 0, v: 1, t: 0, pull: false, kind: 0 });
+    }
     this.cap = cap;
   }
   clear() { for (const m of this.a) m.on = false; }
-  spawn(x, y, v) {
+  spawn(x, y, v, kind = MOTE_XP) {
     for (let i = 0; i < this.cap; i++) {
       const m = this.a[i];
       if (m.on) continue;
       const a = rnd(TAU), s = rnd(40, 120);
       m.on = true; m.x = x; m.y = y; m.vx = Math.cos(a) * s; m.vy = Math.sin(a) * s;
-      m.v = v; m.t = 0; m.pull = false;
+      m.v = v; m.t = 0; m.pull = false; m.kind = kind;
       return;
     }
   }
@@ -412,38 +429,73 @@ export class Motes {
       if (!m.on) continue;
       m.t += dt;
       const d2 = dist2(m.x, m.y, px, py);
-      if (!m.pull && (d2 < R2 || G.magnetAll)) m.pull = true;
+      // 持ち帰れるものは少し広く吸い寄せる（取り逃しが報酬の減少に直結するため）
+      const rr = m.kind === MOTE_XP ? R2 : R2 * 1.6;
+      if (!m.pull && (d2 < rr || G.magnetAll)) m.pull = true;
       if (m.pull) {
         const d = Math.sqrt(d2) || 1;
         const s = clamp(760 - d * 0.5, 220, 900);
         m.vx = damp(m.vx, ((px - m.x) / d) * s, 9, dt);
         m.vy = damp(m.vy, ((py - m.y) / d) * s, 9, dt);
-        if (d2 < 380) { m.on = false; G.collect(m.v); continue; }
+        if (d2 < 380) { m.on = false; G.collect(m.v, m.kind); continue; }
       } else {
         m.vx *= Math.exp(-4 * dt); m.vy *= Math.exp(-4 * dt);
       }
       m.x += m.vx * dt; m.y += m.vy * dt;
     }
   }
-  /** 数百個を1パスにまとめる（色は2種だけなのでパスも2本で済む） */
   draw(ctx, view) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (let pass = 0; pass < 2; pass++) {
-      let started = false;
-      for (const m of this.a) {
-        if (!m.on || (m.v > 3) !== (pass === 1)) continue;
-        if (m.x < view.x0 || m.x > view.x1 || m.y < view.y0 || m.y > view.y1) continue;
-        if (!started) { ctx.beginPath(); started = true; }
-        const s = 2.3 + Math.sin(m.t * 7) * 0.5 + (m.v > 1 ? 1.4 : 0);
-        ctx.moveTo(m.x, m.y - s * 2); ctx.lineTo(m.x + s, m.y);
-        ctx.lineTo(m.x, m.y + s * 2); ctx.lineTo(m.x - s, m.y);
-        ctx.closePath();
-      }
-      if (started) {
-        ctx.fillStyle = pass === 1 ? 'rgba(255,217,138,.95)' : 'rgba(125,240,255,.9)';
-        ctx.fill();
-      }
+
+    // 光：菱形。数が多いので1パスにまとめる
+    let started = false;
+    for (const m of this.a) {
+      if (!m.on || m.kind !== MOTE_XP) continue;
+      if (m.x < view.x0 || m.x > view.x1 || m.y < view.y0 || m.y > view.y1) continue;
+      if (!started) { ctx.beginPath(); started = true; }
+      const s = 2.3 + Math.sin(m.t * 7) * 0.5;
+      ctx.moveTo(m.x, m.y - s * 2); ctx.lineTo(m.x + s, m.y);
+      ctx.lineTo(m.x, m.y + s * 2); ctx.lineTo(m.x - s, m.y);
+      ctx.closePath();
+    }
+    if (started) { ctx.fillStyle = 'rgba(125,240,255,.9)'; ctx.fill(); }
+
+    // 光糸：金の糸巻き。回りながら瞬く
+    for (const m of this.a) {
+      if (!m.on || m.kind !== MOTE_LUMEN) continue;
+      if (m.x < view.x0 || m.x > view.x1 || m.y < view.y0 || m.y > view.y1) continue;
+      const r = 4.4 + Math.sin(m.t * 5) * 0.6;
+      const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r * 3);
+      g.addColorStop(0, 'rgba(255,240,190,.95)');
+      g.addColorStop(.4, 'rgba(255,200,100,.5)');
+      g.addColorStop(1, 'rgba(255,170,60,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(m.x, m.y, r * 3, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.translate(m.x, m.y); ctx.rotate(m.t * 2.2);
+      ctx.strokeStyle = 'rgba(255,236,180,.95)'; ctx.lineWidth = 1.7;
+      ctx.strokeRect(-r * .72, -r * .72, r * 1.44, r * 1.44);
+      ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke();
+      ctx.restore();
+    }
+
+    // 霧の露：淡い雫
+    for (const m of this.a) {
+      if (!m.on || m.kind !== MOTE_DEW) continue;
+      if (m.x < view.x0 || m.x > view.x1 || m.y < view.y0 || m.y > view.y1) continue;
+      const r = 4 + Math.sin(m.t * 4) * 0.7;
+      const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r * 3.2);
+      g.addColorStop(0, 'rgba(255,255,255,.95)');
+      g.addColorStop(.35, 'rgba(190,230,255,.6)');
+      g.addColorStop(1, 'rgba(150,200,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(m.x, m.y, r * 3.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.beginPath();
+      ctx.moveTo(m.x, m.y - r * 1.5); ctx.lineTo(m.x + r * .8, m.y + r * .6);
+      ctx.lineTo(m.x, m.y + r * 1.2); ctx.lineTo(m.x - r * .8, m.y + r * .6);
+      ctx.closePath(); ctx.fill();
     }
     ctx.restore();
   }
@@ -453,14 +505,14 @@ export class Motes {
 export class Boss {
   constructor() { this.on = false; }
 
-  spawn(x, y, hp, final) {
+  spawn(x, y, hp, final, name) {
     this.on = true; this.final = final;
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
     this.r = final ? 74 : 58;
     this.hp = this.mhp = hp;
     this.t = 0; this.cd = 3.2; this.cd2 = 6; this.rot = 0; this.flash = 0;
     this.spiral = 0; this.frozen = 0;
-    this.name = final ? '織主・終' : '織主';
+    this.name = name || '織主';
   }
 
   get phase() { const f = this.hp / this.mhp; return f < 0.32 ? 2 : f < 0.66 ? 1 : 0; }

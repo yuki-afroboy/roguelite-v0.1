@@ -97,6 +97,12 @@ export function sfxPick() {
   tone({ f: rnd(1500, 2100), t: 0.05, type: 'sine', g: 0.05 });
 }
 
+/** 持ち帰れるものを拾った音。経験値の光とは明確に鳴り分ける */
+export function sfxLumen() {
+  tone({ f: 1180, f2: 1760, t: 0.09, type: 'triangle', g: 0.075 });
+  tone({ f: 2360, t: 0.07, type: 'sine', g: 0.035, delay: 0.03 });
+}
+
 export function sfxLevel() {
   [0, 4, 7, 12].forEach((s, i) => tone({ f: hz(24 + s), t: 0.7, type: 'triangle', g: 0.13, delay: i * 0.055 }));
 }
