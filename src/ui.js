@@ -1,8 +1,12 @@
 // DOM 側の表示。Canvas に載せると潰れる文字情報だけをこちらで持つ。
-import { clamp, fmtTime, fmtNum, pick, store } from './util.js';
-import { STYLES, RARITY_NAME } from './upgrades.js';
+import { clamp, fmtTime, fmtNum, pick } from './util.js';
+import { RARITY_NAME } from './upgrades.js';
 import { sfxUI, sfxSelect } from './audio.js';
-import { RUN_TIME } from './game.js';
+import { NIGHTS } from './nights.js';
+import {
+  LOOM, SLOTS, GEAR, RANK_COST, TIER_OF_RANK, TIER_CORES,
+  loomRank, canBuy, unlockedTier, gearItem, gearOwned, canCraft,
+} from './meta.js';
 
 export const byId = id => document.getElementById(id);
 
@@ -11,39 +15,26 @@ let toastT = 0;
 let heartN = 0;
 
 export function initUI() {
-  for (const id of ['hud', 'hearts', 'clock', 'score', 'chain', 'unravel', 'toast',
+  for (const id of ['hud', 'hearts', 'clock', 'purse', 'hudLumen', 'hudDew', 'chain', 'unravel', 'toast',
     'lvnum', 'killnum', 'lvfill', 'title', 'help', 'levelup', 'cards', 'luTitle',
-    'result', 'rank', 'verdict', 'flavor', 'stats', 'paused', 'styles', 'bestLine']) el[id] = byId(id);
-  renderStyles();
-  refreshBest();
+    'result', 'rank', 'verdict', 'rNight', 'loot', 'unlockBox', 'stats', 'paused',
+    'base', 'basePurse', 'baseSub', 'nightsel', 'nsPurse', 'nightList',
+    'loom', 'loomPurse', 'loomBody', 'loomHint', 'gear', 'gearPurse', 'gearBody',
+    'bestLine']) el[id] = byId(id);
 }
 
-export function show(name, v) {
-  el[name]?.classList.toggle('hide', !v);
+export function show(name, v) { el[name]?.classList.toggle('hide', !v); }
+
+// --- 通貨表示 --------------------------------------------------------------
+function purseHTML(save) {
+  return `<div class="coin lum">${fmtNum(save.lumen)}<i>光糸</i></div>
+          <div class="coin core">${save.cores}<i>綻び核</i></div>
+          <div class="coin dew">${save.dew}<i>霧の露</i></div>`;
 }
-
-// --- 型セレクト ------------------------------------------------------------
-let styleId = 'swift';
-export const getStyle = () => styleId;
-
-function renderStyles() {
-  el.styles.innerHTML = '';
-  for (const s of STYLES) {
-    const d = document.createElement('div');
-    d.className = 'style on' + (s.id === styleId ? ' sel' : '');
-    d.innerHTML = `<div class="g">${s.g}</div><div class="n">${s.n}</div><div class="d">${s.d}</div>`;
-    d.addEventListener('click', () => {
-      styleId = s.id; sfxUI();
-      [...el.styles.children].forEach(c => c.classList.remove('sel'));
-      d.classList.add('sel');
-    });
-    el.styles.appendChild(d);
+function paintPurse(save) {
+  for (const k of ['basePurse', 'nsPurse', 'loomPurse', 'gearPurse']) {
+    if (el[k]) el[k].innerHTML = purseHTML(save);
   }
-}
-
-export function refreshBest() {
-  const b = store('best') || 0;
-  el.bestLine.textContent = b ? `最高記録 ${fmtNum(b)}` : '';
 }
 
 // --- HUD -------------------------------------------------------------------
@@ -57,25 +48,32 @@ export function buildHearts(n) {
   heartN = n;
 }
 
-let lastChain = 0, lastScore = -1, lastKills = -1, lastLv = -1, lastSec = -1;
+let lastLumen = -1, lastDew = -1, lastKills = -1, lastLv = -1, lastSec = -1, lastChain = 0;
 
 export function updateHUD(G, dt) {
   if (heartN !== G.stats.maxHp) buildHearts(G.stats.maxHp);
   const hs = el.hearts.children;
   for (let i = 0; i < hs.length; i++) hs[i].classList.toggle('off', i >= G.player.hp);
 
-  const sec = Math.min(G.t, RUN_TIME) | 0;
-  if (sec !== lastSec) {
-    lastSec = sec;
-    el.clock.firstChild.textContent = fmtTime(sec);
+  // 残り時間。夜には終わりがあることを常に見せる
+  const left = Math.ceil(G.timeLeft);
+  if (left !== lastSec) {
+    lastSec = left;
+    el.clock.firstChild.textContent = fmtTime(left);
+    el.clock.classList.toggle('urgent', left <= 20);
   }
-  const sc = Math.round(G.score);
-  if (sc !== lastScore) { lastScore = sc; el.score.firstChild.textContent = fmtNum(sc); }
+
+  // 光糸は「持ち帰るもの」なので、得点ではなくこれを常時見せる
+  if (G.lumen !== lastLumen) { lastLumen = G.lumen; el.hudLumen.textContent = fmtNum(G.lumen); }
+  if (G.dew !== lastDew) {
+    lastDew = G.dew;
+    el.hudDew.textContent = `露 ${G.dew}`;
+    el.hudDew.classList.toggle('hide', G.dew === 0);
+  }
   if (G.kills !== lastKills) { lastKills = G.kills; el.killnum.textContent = `${G.kills} 縫`; }
   if (G.lv !== lastLv) { lastLv = G.lv; el.lvnum.textContent = G.lv; }
   el.lvfill.style.width = clamp(G.xp / G.xpNeed, 0, 1) * 100 + '%';
 
-  // 連鎖
   if (G.chain > lastChain && G.chain >= 2) {
     el.chain.innerHTML = `${G.chain}<b>連鎖</b>`;
     el.chain.classList.remove('pop');
@@ -84,16 +82,12 @@ export function updateHUD(G, dt) {
   }
   lastChain = G.chain;
 
-  // 解
   const deg = clamp(G.gauge, 0, 1) * 360;
   el.unravel.style.background =
     `conic-gradient(from -90deg, #ffd98a 0deg ${deg}deg, rgba(255,255,255,.08) ${deg}deg 360deg)`;
   el.unravel.classList.toggle('ready', G.gauge >= 1);
 
-  if (toastT > 0) {
-    toastT -= dt;
-    if (toastT <= 0) el.toast.classList.remove('show');
-  }
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) el.toast.classList.remove('show'); }
 }
 
 export function toast(msg, t = 2.4) {
@@ -103,10 +97,153 @@ export function toast(msg, t = 2.4) {
 }
 
 export function resetHUD() {
-  lastChain = 0; lastScore = -1; lastKills = -1; lastLv = -1; lastSec = -1;
+  lastLumen = -1; lastDew = -1; lastKills = -1; lastLv = -1; lastSec = -1; lastChain = 0;
   el.chain.classList.remove('pop');
   el.toast.classList.remove('show');
+  el.hudDew.classList.add('hide');
   heartN = 0;
+}
+
+export function setBestLine(save) {
+  const cleared = Object.values(save.nights).filter(n => n.cleared).length;
+  el.bestLine.textContent = cleared ? `突破した夜 ${cleared} / ${NIGHTS.length}` : '';
+}
+
+// --- 拠点 ------------------------------------------------------------------
+export function renderBase(save) {
+  paintPurse(save);
+  const cleared = Object.values(save.nights).filter(n => n.cleared).length;
+  el.baseSub.textContent = `突破 ${cleared} / ${NIGHTS.length}`;
+  const next = NIGHTS.find(n => n.id === save.unlocked) || NIGHTS[NIGHTS.length - 1];
+  byId('goNightsSub').textContent = `次は「${next.name}」`;
+
+  const bought = LOOM.reduce((a, n) => a + loomRank(save, n.id), 0);
+  const total = LOOM.reduce((a, n) => a + n.max, 0);
+  const affordable = LOOM.some(n => canBuy(save, n).ok);
+  byId('goLoomSub').innerHTML = `鍛えた数 ${bought} / ${total}` +
+    (affordable ? ' <span style="color:#ffd98a">・いま開ける</span>' : '');
+
+  byId('goGearSub').textContent = SLOTS.map(s => gearItem(s.key, save.gear[s.key]).n).join(' ・ ');
+}
+
+// --- 夜選択 ----------------------------------------------------------------
+export function renderNights(save, onPick) {
+  paintPurse(save);
+  el.nightList.innerHTML = '';
+  for (const n of NIGHTS) {
+    const rec = save.nights[n.id] || {};
+    const locked = n.id > save.unlocked;
+    const d = document.createElement('div');
+    d.className = 'night' + (locked ? ' locked' : '') + (n.boss ? ' boss' : '') + (locked ? '' : ' on');
+    d.innerHTML =
+      `<div class="no">${n.id}</div>
+       <div class="tx">
+         <div class="tt">${n.name}${n.boss ? ' <span style="color:#ff9d4d;font-size:11px">織主</span>' : ''}</div>
+         <div class="dd">${locked ? '前の夜を突破すると開く' : n.sub}</div>
+       </div>
+       <div class="meta">${fmtTime(n.dur)}<br>${rec.cleared
+         ? `<span class="ok">踏破 +${n.reward.clear}</span>`
+         : '未突破'}</div>`;
+    if (!locked) d.addEventListener('click', () => { sfxSelect(); onPick(n); });
+    el.nightList.appendChild(d);
+  }
+}
+
+// --- 織機 ------------------------------------------------------------------
+const BRANCH_DESC = {
+  '糸': '何が可能になるか ── 長さと閉じ方',
+  '針': '生き延びる力 ── 耐久と身のこなし',
+  '環': '上手さへの見返り ── 面積・連鎖・実り',
+};
+
+export function renderLoom(save, onBuy) {
+  paintPurse(save);
+  el.loomBody.innerHTML = '';
+  for (const br of ['糸', '針', '環']) {
+    const wrap = document.createElement('div');
+    wrap.className = 'branch';
+    wrap.innerHTML = `<h3>${br}</h3><div class="bd">${BRANCH_DESC[br]}</div><div class="nodes"></div>`;
+    const list = wrap.querySelector('.nodes');
+
+    for (const node of LOOM.filter(n => n.br === br)) {
+      const r = loomRank(save, node.id);
+      const c = canBuy(save, node);
+      const d = document.createElement('div');
+      d.className = 'node';
+
+      let pips = '';
+      for (let i = 0; i < node.max; i++) {
+        const locked = TIER_OF_RANK[i] > unlockedTier(save);
+        pips += `<div class="pip ${i < r ? 'on' : locked ? 'tier' : ''}"></div>`;
+      }
+
+      let btn;
+      if (c.ok) btn = `<button class="buy on" data-id="${node.id}">${c.cost}</button>`;
+      else if (c.why === 'max') btn = `<button class="buy max">極</button>`;
+      else if (c.why === 'locked') btn = `<button class="buy lock">核 ${c.needCores}</button>`;
+      else btn = `<button class="buy no">${c.cost}</button>`;
+
+      d.innerHTML =
+        `<div class="g">${node.g}</div>
+         <div class="tx">
+           <div class="tt">${node.n} <span style="color:#5d5786;font-size:11px">${r}/${node.max}</span></div>
+           <div class="dd">${node.d(r + 1 > node.max ? node.max : r + 1)}</div>
+           <div class="pips">${pips}</div>
+         </div>${btn}`;
+
+      const b = d.querySelector('.buy.on');
+      if (b) b.addEventListener('click', () => onBuy(node));
+      list.appendChild(d);
+    }
+    el.loomBody.appendChild(wrap);
+  }
+
+  const tier = unlockedTier(save);
+  const nextTier = TIER_CORES[tier + 1];
+  el.loomHint.textContent = nextTier === undefined
+    ? 'すべての段が開いている'
+    : `綻び核 ${nextTier} 個で、次の段が開く（いま ${save.cores} 個）`;
+}
+
+// --- 装備 ------------------------------------------------------------------
+export function renderGear(save, onEquip, onCraft) {
+  paintPurse(save);
+  el.gearBody.innerHTML = '';
+  for (const slot of SLOTS) {
+    const wrap = document.createElement('div');
+    wrap.className = 'slot';
+    wrap.innerHTML = `<h3>${slot.n}</h3><div class="sd">${slot.d}</div><div class="gears"></div>`;
+    const list = wrap.querySelector('.gears');
+
+    for (const item of GEAR[slot.key]) {
+      const owned = gearOwned(save, slot.key, item.id);
+      const equipped = save.gear[slot.key] === item.id;
+      const cc = owned ? null : canCraft(save, slot.key, item);
+      const d = document.createElement('div');
+      d.className = 'gear' + (equipped ? ' equipped' : '') +
+        (!owned && cc && !cc.ok && cc.why === 'night' ? ' locked' : '') +
+        (!owned ? ' craft' : '') + ' on';
+
+      let st;
+      if (equipped) st = '装備中';
+      else if (owned) st = '外す→着ける';
+      else if (cc.why === 'night') st = `夜${cc.night}を突破`;
+      else st = `露 ${item.cost}`;
+
+      d.innerHTML =
+        `<div class="g">${item.g}</div>
+         <div class="tx"><div class="tt">${item.n}</div><div class="dd">${item.d}</div></div>
+         <div class="st">${st}</div>`;
+
+      d.addEventListener('click', () => {
+        if (owned) { if (!equipped) { sfxSelect(); onEquip(slot.key, item.id); } }
+        else if (cc.ok) { sfxSelect(); onCraft(slot.key, item); }
+        else sfxUI();
+      });
+      list.appendChild(d);
+    }
+    el.gearBody.appendChild(wrap);
+  }
 }
 
 // --- レベルアップ -----------------------------------------------------------
@@ -131,43 +268,49 @@ export function showCards(cards, levels, onPick) {
 }
 
 // --- 結果 -------------------------------------------------------------------
-const WIN_FLAVOR = [
-  '獣の主は解け、夜は縫い合わされた。\n朝が、少しだけ早く来る。',
-  '最後のひと針が、闇の縫い目を断った。\n糸は、まだ光っている。',
-];
-const LOSE_FLAVOR = [
-  '指先の光が消える。\n夜は、まだ綻んだままだ。',
-  '糸は切れた。\nだが、縫い方は覚えた。',
-  '闇に呑まれる。\n次はもっと大きく囲め。',
-];
+const WIN_FLAVOR = ['夜 明 け', '突 破'];
+const LOSE_FLAVOR = ['綻 び', '力 尽 き'];
 
-function rankOf(s) {
-  if (s >= 110000) return ['S+', '#fff'];
-  if (s >= 70000) return ['S', '#ffd98a'];
-  if (s >= 46000) return ['A', '#ffd98a'];
-  if (s >= 29000) return ['B', '#c08cff'];
-  if (s >= 15000) return ['C', '#7df0ff'];
-  return ['D', '#8a83ad'];
+function rankOf(score, dur) {
+  const perMin = score / Math.max(dur / 60, 0.5);
+  if (perMin >= 9000) return 'S+';
+  if (perMin >= 6500) return 'S';
+  if (perMin >= 4500) return 'A';
+  if (perMin >= 3000) return 'B';
+  if (perMin >= 1600) return 'C';
+  return 'D';
 }
 
-export function showResult(r) {
-  const [rk] = rankOf(r.score);
-  el.rank.textContent = rk;
-  el.verdict.textContent = r.win ? '夜 明 け' : '綻 び';
-  el.flavor.textContent = (r.win ? pick(WIN_FLAVOR) : pick(LOSE_FLAVOR));
+export function showResult(r, gained) {
+  el.rank.textContent = rankOf(r.score, r.dur);
+  el.verdict.textContent = r.win ? pick(WIN_FLAVOR) : pick(LOSE_FLAVOR);
+  el.rNight.textContent = `夜 ${r.nightId} ・ ${r.nightName}`;
 
-  const rows = [
-    ['縫い落とした獣', fmtNum(r.kills), false],
-    ['最大連鎖', `${r.maxChain} 連`, false],
-    ['一縫の最多', `${r.bestLoop} 体`, false],
-    ['閉じた輪', fmtNum(r.stitches), false],
-    ['到達', `LV ${r.lv} ・ ${r.style}`, false],
-    ['生存', fmtTime(r.time), false],
-    ['得点', fmtNum(r.score), true],
+  const rows = [];
+  rows.push(`<div class="lrow lum"><span>拾った光糸</span><b>+${fmtNum(gained.lumen)}</b></div>`);
+  if (gained.dew > 0) rows.push(`<div class="lrow dew"><span>霧の露</span><b>+${gained.dew}</b></div>`);
+  rows.push(`<div class="lrow lum${r.win ? '' : ' miss'}"><span>踏破の報い</span><b>${r.win ? '+' + fmtNum(gained.clear) : '—'}</b></div>`);
+  if (gained.cores > 0) {
+    rows.push(`<div class="lrow core"><span>綻び核</span><b>+${gained.cores}</b></div>`);
+  } else if (r.nightId === 5) {
+    rows.push(`<div class="lrow core miss"><span>綻び核</span><b>—</b></div>`);
+  }
+  el.loot.innerHTML = rows.join('');
+
+  el.unlockBox.innerHTML = gained.unlocked
+    ? `<div class="unlock">夜 ${gained.unlocked} が開いた</div>`
+    : (r.win ? '' : `<div class="unlock" style="color:var(--dim);border-color:#ffffff18;background:#ffffff06">拾ったものは持ち帰った。もう一度挑める</div>`);
+
+  const st = [
+    ['縫い落とした獣', fmtNum(r.kills)],
+    ['一縫の最多', `${r.bestLoop} 体`],
+    ['最大連鎖', `${r.maxChain} 連`],
+    ['閉じた輪', fmtNum(r.stitches)],
+    ['到達', `LV ${r.lv}`],
+    ['生存', fmtTime(r.time)],
+    ['得点', fmtNum(r.score)],
   ];
-  el.stats.innerHTML = rows.map(([k, v, hi]) =>
-    `<div class="stat${hi ? ' hi' : ''}"><span>${k}</span><b>${v}${hi && r.isBest ? '<span class="newbest">最高</span>' : ''}</b></div>`
-  ).join('');
+  el.stats.innerHTML = st.map(([k, v]) =>
+    `<div class="stat"><span>${k}</span><b>${v}</b></div>`).join('');
   show('result', true);
-  refreshBest();
 }

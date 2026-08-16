@@ -5,21 +5,21 @@ import {
 } from './util.js';
 import { input } from './input.js';
 import { Thread } from './thread.js';
-import { Swarm, Bullets, Motes, Boss, bakeSprites } from './entities.js';
-import { baseStats, STYLES, drawCards } from './upgrades.js';
+import { Swarm, Bullets, Motes, Boss, bakeSprites, MOTE_XP, MOTE_LUMEN, MOTE_DEW } from './entities.js';
+import { baseStats, drawCards } from './upgrades.js';
+import { nightById, nightSpawnPlan } from './nights.js';
+import { applyMeta } from './meta.js';
 import {
   fxUpdate, fxDrawWorld, fxDrawPops, fxDrawOverlay, fxBurst, fxRing, fxPop,
   fxStitchFlash, fxShake, fxHitStop, fxScreenFlash, fxShakeX, fxShakeY,
   fxClear, fxConsumeStop,
 } from './fx.js';
 import {
-  sfxStitch, sfxEmpty, sfxHurt, sfxPick, sfxLevel, sfxUnravel, sfxBoss,
+  sfxStitch, sfxEmpty, sfxHurt, sfxPick, sfxLumen, sfxLevel, sfxUnravel, sfxBoss,
   musicIntensity, musicTick, musicStart, musicStop,
 } from './audio.js';
 
-export const RUN_TIME = 600;      // 10分
-const BOSS1_T = 270;              // 4:30
-const FINAL_T = 510;              // 8:30
+export const RUN_TIME = 600;      // 旧単位。夜ごとの制限時間は night.dur
 
 const STATE = { RUN: 'run', LEVEL: 'level', OVER: 'over', PAUSE: 'pause' };
 
@@ -37,6 +37,7 @@ export class Game {
     this.player = { x: 0, y: 0, r: 9, hp: 5, inv: 0, ang: -Math.PI / 2, vx: 0, vy: 0 };
     this.state = STATE.OVER;
     this.frame = 0;
+    this.night = nightById(1);
     // main.js が差し込むフック
     this.onLevelUp = null; this.onEnd = null; this.onToast = null;
     bakeSprites();
@@ -55,11 +56,17 @@ export class Game {
   }
 
   // ======================================================================
-  start(styleId) {
+  /**
+   * 夜へ挑む。恒久強化と装備はここで一度だけ stats に乗る。
+   * @param {number} nightId
+   * @param {object} save  meta.js のセーブ。省略時は素の状態
+   */
+  start(nightId, save) {
+    const night = nightById(nightId);
+    this.night = night;
+
     const st = baseStats();
-    const style = STYLES.find(s => s.id === styleId) || STYLES[0];
-    style.apply(st);
-    this.style = style;
+    if (save) applyMeta(st, save);
     this.stats = st;
     this.levels = {};
 
@@ -73,6 +80,7 @@ export class Game {
     this.cam = { x: 0, y: 0 };
 
     this.thread.maxPts = st.threadPts;
+    this.thread.snap = st.snap;
     this.thread.reset(0, 0);
 
     this.swarm.clear(); this.bullets.clear(); this.motes.clear();
@@ -81,17 +89,19 @@ export class Game {
 
     this.xp = 0; this.lv = 1; this.xpNeed = this.needFor(1);
     this.chain = 0; this.chainT = 0;
-    this.gauge = 0; this.unravelT = 0; this.magnetAll = false;
+    this.gauge = clamp(st.startGauge, 0, 0.9);
+    this.unravelT = 0; this.magnetAll = false;
     this.enemyTS = 1;
 
     this.kills = 0; this.score = 0; this.maxChain = 0; this.bestLoop = 0; this.stitches = 0;
+    this.lumen = 0; this.dew = 0;                 // 拾った分だけ持ち帰る
     this.burns = []; this.echoes = []; this.shocks = []; this.shockId = 1;
-    this.spawnAcc = 0; this.surgeT = 30; this.surge = 0;
-    this.bossPhase = 0; this.result = null; this.winT = 0;
+    this.spawnAcc = 0; this.surgeT = 26; this.surge = 0;
+    this.bossSpawned = false; this.result = null; this.winT = 0;
     this.tutorial = 0;
 
     musicStart(); musicIntensity(0);
-    this.toast('指を滑らせて、光の糸を引け', 3.2);
+    this.toast(night.teach, 3.2);
   }
 
   /**
@@ -131,10 +141,11 @@ export class Game {
     fxUpdate(dt);
   }
 
-  // 10分で概ね LV30 前後に着地する曲線
-  needFor(lv) { return Math.floor(9 + lv * 6 + lv * lv * 0.12); }
+  // 夜ごとに目標Lvへ着地させる。短い夜で札が増えすぎないよう xpScale で伸縮する
+  needFor(lv) { return Math.floor((9 + lv * 6 + lv * lv * 0.12) * this.night.xpScale); }
 
-  get hpMul() { return 1 + this.t * 0.0078 + (this.t > FINAL_T ? 1.2 : 0); }
+  get hpMul() { return this.night.baseHp * (1 + this.t * this.night.ramp); }
+  get timeLeft() { return Math.max(0, this.night.dur - this.t); }
   get chainMult() { return 1 + Math.max(0, this.chain - 1) * 0.5; }
 
   slowFactorFor() { return this.enemyTS; }
@@ -186,13 +197,18 @@ export class Game {
 
     // 緊張度（BGMの密度）
     const dens = clamp(this.swarm.alive / 160, 0, 1);
-    musicIntensity(clamp(this.t / RUN_TIME * 0.6 + dens * 0.4 + (this.boss.on ? 0.3 : 0), 0, 1));
+    musicIntensity(clamp(this.t / this.night.dur * 0.6 + dens * 0.4 + (this.boss.on ? 0.3 : 0), 0, 1));
 
     if (this.winT > 0) {
       this.winT -= dt;
       if (this.winT <= 0) { this.finish(true); return; }
     }
-    if (this.player.hp <= 0) this.finish(false);
+    if (this.player.hp <= 0) { this.finish(false); return; }
+
+    // 制限時間。織主のいる夜は「倒せば突破」、いない夜は「生き延びれば突破」
+    if (this.t >= this.night.dur) {
+      this.finish(!this.night.boss);
+    }
   }
 
   updatePlayer(dt) {
@@ -220,8 +236,17 @@ export class Game {
     this.cam.x = damp(this.cam.x, tx2, 7, dt);
     this.cam.y = damp(this.cam.y, ty2, 7, dt);
 
-    // チュートリアル
-    if (this.tutorial === 0 && this.stitches > 0) {
+    // 導入の言葉。ここは「輪をまだ一度も閉じていない人」を最優先で拾う。
+    // 計測では、大きく回りすぎた人が最後まで一度も閉じられずに死んでいた。
+    if (this.stitches === 0) {
+      if (this.tutorial === 0 && this.t > 11) {
+        this.tutorial = 0.5;
+        this.toast('自分の糸に触れると、輪が閉じる', 3.4);
+      } else if (this.tutorial === 0.5 && this.t > 24) {
+        this.tutorial = 0.6;
+        this.toast('小さく回れ。糸の届く範囲で', 3.4);
+      }
+    } else if (this.tutorial < 1) {
       this.tutorial = 1;
       this.toast('輪の内側は、すべて縫い落ちる', 3.0);
     } else if (this.tutorial === 1 && this.stitches >= 6) {
@@ -307,6 +332,15 @@ export class Game {
       if (killed >= 3) fxPop(b.cx, b.cy, `${killed}`, col, 15 + Math.min(killed, 26));
       sfxStitch(Math.max(1, this.chain), clamp(killed / 22, 0, 1));
       this.gauge = clamp(this.gauge + killed * 0.009 * st.unravelGain, 0, 1);
+
+      // 縫った直後は針が身を守る。
+      // 「囲む」には獣の隣にいる必要があり、獣は触れると痛い ── つまり
+      // 上手く遊ぶほど削られる、という矛盾が構造的にあった（計測では
+      // 30秒で40〜80体倒す操作をしても22秒で死んでいた）。
+      // 核の動作そのものに安全を紐付けて、この矛盾を解く。
+      if (!isEcho) {
+        this.player.inv = Math.max(this.player.inv, clamp(0.45 + killed * 0.025, 0.45, 1.1));
+      }
     } else {
       sfxEmpty();   // 空振りは控えめに。輪を閉じた手応えだけは返す
     }
@@ -382,27 +416,27 @@ export class Game {
 
   // ---- 進行管理 --------------------------------------------------------
   director(dt) {
-    const t = this.t;
+    const t = this.t, n = this.night;
 
-    if (this.bossPhase === 0 && t >= BOSS1_T) {
-      this.bossPhase = 1;
-      this.spawnBoss(1900, false);
-    }
-    if (this.bossPhase === 2 && t >= FINAL_T) {
-      this.bossPhase = 3;
-      this.spawnBoss(7600, true);
+    if (n.boss && !this.bossSpawned && t >= n.dur * n.boss.at) {
+      this.bossSpawned = true;
+      this.spawnBoss(n.boss.hp * n.baseHp, n.boss.name);
     }
 
-    // 湧きの脈：22秒ごとに一気に押し寄せる
+    // 湧きの脈：20秒強ごとに一気に押し寄せる
     this.surgeT -= dt;
-    if (this.surgeT <= 0) { this.surgeT = rnd(20, 26); this.surge = 4.5; }
+    if (this.surgeT <= 0) { this.surgeT = rnd(19, 25); this.surge = 4.5; }
     if (this.surge > 0) this.surge -= dt;
 
-    let rate = 1.8 + t * 0.045;
-    if (this.surge > 0) rate *= 2.3;
-    if (this.boss.on) rate *= 0.5;
-    rate = Math.min(rate, 30);
-    if (this.swarm.alive > 430) rate *= 0.22;
+    // 「1秒に何体」ではなく「同時に何体いてほしいか」を夜が決める。
+    // 総キル数はほぼ ceil（毎秒の上限）で決まるので、上位の夜ほど厚くしてある。
+    let target = n.dens.base + t * n.dens.growth;
+    if (this.surge > 0) target *= 1.5;
+    if (this.boss.on) target = Math.min(target, n.dens.cap * 0.55);
+    target = Math.min(target, n.dens.cap);
+
+    const ceiling = n.ceil.base + t * n.ceil.growth;
+    const rate = clamp((target - this.swarm.alive) * 0.5, 0, ceiling);
 
     this.spawnAcc += rate * dt;
     while (this.spawnAcc >= 1) {
@@ -411,34 +445,24 @@ export class Game {
     }
   }
 
-  spawnPlan() {
-    const t = this.t, w = [];
-    w.push({ kind: 'hotsure', w: 10 });
-    if (t > 50) w.push({ kind: 'shitsu', w: 5 + (t - 50) / 55 });
-    if (t > 135) w.push({ kind: 'retsu', w: 3 + (t - 135) / 80 });
-    if (t > 205) w.push({ kind: 'toga', w: 2.4 + (t - 205) / 110 });
-    if (t > 320) w.push({ kind: 'yoroi', w: 2 + (t - 320) / 130 });
-    return w;
-  }
-
   spawnOne() {
     const r = Math.max(this.w, this.h) * 0.56 + rnd(40, 150);
     const a = rnd(TAU);
     const x = this.cam.x + Math.cos(a) * r;
     const y = this.cam.y + Math.sin(a) * r;
-    const kind = pickWeighted(this.spawnPlan()).kind;
-    const elite = this.t > 160 && chance(0.022);
+    const kind = pickWeighted(nightSpawnPlan(this.night, this.t)).kind;
+    const elite = this.t > this.night.dur * 0.45 && chance(0.02);
     this.swarm.spawn(kind, x, y, this.hpMul, elite);
   }
 
-  spawnBoss(hp, final) {
+  spawnBoss(hp, name) {
     const a = rnd(TAU), r = Math.hypot(this.w, this.h) * 0.42;
-    this.boss.spawn(this.cam.x + Math.cos(a) * r, this.cam.y + Math.sin(a) * r, hp, final);
+    this.boss.spawn(this.cam.x + Math.cos(a) * r, this.cam.y + Math.sin(a) * r, hp, true, name);
     sfxBoss();
     fxScreenFlash(0.35, '255,120,90');
     fxShake(16);
     vibrate([40, 60, 90]);
-    this.toast(final ? '織主・終 ─ 夜の縫い目を断て' : '織主 現る', 3.4);
+    this.toast(name + ' ─ 夜の縫い目を断て', 3.4);
   }
 
   onBossDown(boss) {
@@ -448,15 +472,13 @@ export class Game {
     for (let i = 0; i < 5; i++) fxRing(boss.x, boss.y, boss.r * (0.4 + i * .3), boss.r * (4 + i * 2), .8 + i * .16, '255,190,120', 6 - i);
     fxBurst(boss.x, boss.y, 90, '255,200,140', { spd: 520, life: 1.1, size: 4 });
     vibrate([60, 40, 120]);
-    this.score += boss.final ? 12000 : 3500;
-    for (let i = 0; i < 44; i++) this.motes.spawn(boss.x + rnd(-60, 60), boss.y + rnd(-60, 60), 4);
-    if (boss.final) {
-      this.toast('夜が明ける', 4);
-      this.winT = 1.6;          // 余韻を見せてから結果へ
-    } else {
-      this.bossPhase = 2;
-      this.toast('綻びは、まだ広がる', 3);
-    }
+    this.score += 4000;
+    // 織主は光糸を多く落とす。倒した価値が持ち帰るものに直結する
+    for (let i = 0; i < 30; i++) this.motes.spawn(boss.x + rnd(-70, 70), boss.y + rnd(-70, 70), 3, MOTE_LUMEN);
+    for (let i = 0; i < 6; i++) this.motes.spawn(boss.x + rnd(-50, 50), boss.y + rnd(-50, 50), 1, MOTE_DEW);
+    for (let i = 0; i < 30; i++) this.motes.spawn(boss.x + rnd(-60, 60), boss.y + rnd(-60, 60), 4, MOTE_XP);
+    this.toast('夜が明ける', 4);
+    this.winT = 2.2;                       // 落ちたものを拾う間を置いてから結果へ
   }
 
   // ---- プレイヤー被弾 --------------------------------------------------
@@ -479,9 +501,9 @@ export class Game {
       const dx = e.x - p.x, dy = e.y - p.y;
       const d = Math.hypot(dx, dy);
       if (d > 110 || d < 0.01) continue;
-      const k = (1 - d / 110) * 420;
+      const k = (1 - d / 110) * 760 * this.stats.flinch;
       e.vx += (dx / d) * k; e.vy += (dy / d) * k;
-      e.frozen = Math.max(e.frozen, 0.18);
+      e.frozen = Math.max(e.frozen, 0.36);   // 押した直後に戻られると隙にならない
     }
 
     sfxHurt();
@@ -496,13 +518,26 @@ export class Game {
   onKill(e, d, byLoop) {
     this.kills++;
     this.score += d.sc * (e.elite ? 5 : 1);
-    // 光の価値は素の値のまま。収穫倍率は拾う側（collect）で一度だけ掛ける。
+
+    // 光（その場の経験値）── 拾うとレベルが上がる。持ち帰らない
     const n = Math.min(d.xp * (e.elite ? 6 : 1), 6);
-    for (let i = 0; i < n; i++) this.motes.spawn(e.x, e.y, e.elite ? 3 : 1);
+    for (let i = 0; i < n; i++) this.motes.spawn(e.x, e.y, e.elite ? 3 : 1, MOTE_XP);
+
+    // 光糸（持ち帰る通貨）── 毎回は落ちない。落ちたときに価値が伝わるように。
+    // 落ちる率は夜ごと（nights.js）。上位の夜ほど1体あたりは減らし、
+    // 総キル数の差がそのまま8倍の収入差にならないようにしている。
+    if (e.elite) this.motes.spawn(e.x, e.y, 4, MOTE_LUMEN);
+    else if (chance(this.night.lumenRate)) this.motes.spawn(e.x, e.y, 1, MOTE_LUMEN);
+
+    // 霧の露（章素材）── 装備を編むための素材
+    if (this.night.dewRate > 0 && chance(this.night.dewRate)) this.motes.spawn(e.x, e.y, 1, MOTE_DEW);
+
     if (!byLoop) this.gauge = clamp(this.gauge + 0.002, 0, 1);
   }
 
-  collect(v) {
+  collect(v, kind) {
+    if (kind === MOTE_LUMEN) { this.lumen += v; sfxLumen(); return; }
+    if (kind === MOTE_DEW) { this.dew += v; sfxLumen(); return; }
     this.xp += v * this.stats.moteMul;
     if (this.frame % 3 === 0) sfxPick();
     while (this.xp >= this.xpNeed) {
@@ -524,10 +559,20 @@ export class Game {
   applyCard(card) {
     this.levels[card.id] = (this.levels[card.id] || 0) + 1;
     card.apply(this.stats);
+
+    // 糸を編み直すたび、綻びも1つ繕われる。
+    // 10分の運びに対して回復手段が皆無で、6回被弾した時点で終わっていた
+    // （計測では全モデルが6回被弾＝40〜60秒で死亡）。成長と回復を同じ動作に束ねる。
+    const before = this.player.hp;
+    this.player.hp = Math.min(this.stats.maxHp, this.player.hp + 1);
     if (card.id === 'hp') this.player.hp = this.stats.maxHp;
     if (this.stats.heal) {
       this.player.hp = Math.min(this.stats.maxHp, this.player.hp + this.stats.heal);
       this.stats.heal = 0;
+    }
+    if (this.player.hp > before) {
+      fxRing(this.player.x, this.player.y, 10, 130, .55, '255,120,150', 3);
+      fxBurst(this.player.x, this.player.y, 14, '255,140,170', { spd: 150, life: .6, size: 2.4 });
     }
     this.thread.maxPts = this.stats.threadPts;
     this.state = STATE.RUN;
@@ -574,16 +619,14 @@ export class Game {
     if (this.state === STATE.OVER) return;
     this.state = STATE.OVER;
     musicStop();
-    const survived = Math.min(this.t, RUN_TIME);
-    const total = Math.round(this.score + survived * 6 + this.maxChain * 260 + (win ? 20000 : 0));
-    const best = store('best') || 0;
-    const isBest = total > best;
-    if (isBest) store('best', total);
+    const survived = Math.min(this.t, this.night.dur);
+    const total = Math.round(this.score + survived * 6 + this.maxChain * 260 + (win ? 6000 : 0));
     this.result = {
-      win, score: total, kills: this.kills, time: survived,
+      win, nightId: this.night.id, nightName: this.night.name,
+      score: total, kills: this.kills, time: survived, dur: this.night.dur,
       maxChain: this.maxChain, bestLoop: this.bestLoop, lv: this.lv,
-      stitches: this.stitches, isBest, best: Math.max(best, total),
-      style: this.style.n,
+      stitches: this.stitches,
+      lumen: this.lumen, dew: this.dew,     // 拾った分。勝敗によらず持ち帰る
     };
     fxScreenFlash(win ? 0.8 : 0.4, win ? '255,230,180' : '255,60,90');
     this.onEnd?.(this.result);
@@ -618,6 +661,7 @@ export class Game {
 
     this.drawWeave(ctx, view);
     this.drawBurns(ctx);
+    this.drawClosePreview(ctx);
     this.motes.draw(ctx, view);
     this.swarm.draw(ctx, view, ox, oy, this.dpr);
     this.boss.draw(ctx);
@@ -657,6 +701,55 @@ export class Game {
         ctx.fillStyle = `rgba(140,120,255,${a})`;
         ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
       }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * 閉じかけの輪を先読みして描く。
+   * 「針を自分の糸に近づけると何かが起きる」を、文章ではなく画面で教える部分。
+   * 近づくほど濃くなるので、届かない大回りをしている人にも距離感が伝わる。
+   */
+  drawClosePreview(ctx) {
+    if (this.state !== STATE.RUN) return;
+    const pv = this.thread.previewClose();
+    this._preview = pv;
+    if (!pv) return;
+
+    const f = pv.flat;
+    const a = pv.near;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 囲われる領域。遠いうちは塗らない（見えないものに塗り潰しの負荷は払わない）
+    if (a > 0.12) {
+      ctx.beginPath();
+      ctx.moveTo(f[0], f[1]);
+      for (let i = 2; i < f.length; i += 2) ctx.lineTo(f[i], f[i + 1]);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(255,214,140,${a * 0.06})`;
+      ctx.fill();
+    }
+
+    // 閉じ口（針 → 触れる先）
+    ctx.setLineDash([5, 7]);
+    ctx.lineDashOffset = -this.t * 42;
+    ctx.lineWidth = 1 + a * 1.6;
+    ctx.strokeStyle = `rgba(255,228,170,${0.18 + a * 0.62})`;
+    ctx.beginPath();
+    ctx.moveTo(this.thread.hx, this.thread.hy);
+    ctx.lineTo(pv.x, pv.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 触れる寸前だけ、閉じ口に光点を置く
+    if (a > 0.55) {
+      const r = 4 + a * 5;
+      const g = ctx.createRadialGradient(pv.x, pv.y, 0, pv.x, pv.y, r * 2.4);
+      g.addColorStop(0, `rgba(255,255,235,${a})`);
+      g.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(pv.x, pv.y, r * 2.4, 0, TAU); ctx.fill();
     }
     ctx.restore();
   }

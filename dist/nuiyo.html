@@ -6,12 +6,13 @@
 <meta name="theme-color" content="#07060f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="縫夜 -NUIYO- 指でなぞった光の糸で夜を縫う、10分完結の2Dローグライト。">
+<meta name="description" content="縫夜 -NUIYO- 指でなぞった光の糸で夜を縫う、片手で遊べる2Dローグライト。">
 <title>縫夜 -NUIYO-</title>
 <style>
 :root{
   --void:#07060f; --void2:#0d0b1c; --ink:#161233;
   --thread:#ffd98a; --thread2:#7df0ff; --blood:#ff4d6d;
+  --dew:#bfe4ff; --core:#c08cff;
   --paper:#e8e3f5; --dim:#8a83ad;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
@@ -29,16 +30,18 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 #hud{z-index:12}
 #hud .top{position:absolute;top:calc(var(--safe-t) + 10px);left:0;right:0;
   display:flex;align-items:flex-start;justify-content:space-between;padding:0 14px}
-#hearts{display:flex;gap:5px;filter:drop-shadow(0 0 6px #ff4d6d66)}
+#hearts{display:flex;gap:5px;flex-wrap:wrap;max-width:38%;filter:drop-shadow(0 0 6px #ff4d6d66)}
 .heart{width:13px;height:13px;border-radius:50%;background:var(--blood);
   box-shadow:0 0 8px #ff4d6d;transition:.2s}
 .heart.off{background:#2a2540;box-shadow:none;transform:scale(.7)}
 #clock{font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;
   font-weight:700;text-align:center;text-shadow:0 0 12px #7df0ff55}
-#clock small{display:block;font-size:9px;letter-spacing:.35em;color:var(--dim);font-weight:400;margin-top:1px}
-#score{font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;text-align:right;color:var(--thread);
-  text-shadow:0 0 10px #ffd98a55}
-#score small{display:block;font-size:9px;letter-spacing:.2em;color:var(--dim);font-weight:400}
+#clock small{display:block;font-size:9px;letter-spacing:.28em;color:var(--dim);font-weight:400;margin-top:1px}
+#clock.urgent{color:#ff8a9c;text-shadow:0 0 14px #ff4d6d88}
+#purse{text-align:right;font-variant-numeric:tabular-nums}
+#purse b{font-size:16px;font-weight:800;color:var(--thread);text-shadow:0 0 10px #ffd98a66}
+#purse small{display:block;font-size:9px;letter-spacing:.2em;color:var(--dim);font-weight:400}
+#purse .dw{font-size:11px;color:var(--dew);margin-top:2px;display:block}
 
 #chain{position:absolute;top:22%;left:50%;transform:translate(-50%,-50%) scale(.4);
   font-size:52px;font-weight:900;opacity:0;letter-spacing:-.02em;
@@ -51,7 +54,7 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
  100%{opacity:0;transform:translate(-50%,-56%) scale(1)}}
 
 #lvwrap{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 8px);padding:0 14px}
-#lvbar{height:4px;background:#1a1633;border-radius:99px;overflow:hidden;position:relative}
+#lvbar{height:4px;background:#1a1633;border-radius:99px;overflow:hidden}
 #lvfill{height:100%;width:0%;border-radius:99px;
   background:linear-gradient(90deg,#7df0ff,#ffd98a);box-shadow:0 0 12px #7df0ffaa;transition:width .12s linear}
 #lvtxt{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.18em;color:var(--dim);margin-bottom:5px}
@@ -70,15 +73,17 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
   background:#0a0818cc;padding:7px 16px;border-radius:99px;border:1px solid #ffffff10;white-space:nowrap}
 #toast.show{opacity:1}
 
-#pause{position:absolute;top:calc(var(--safe-t) + 46px);left:50%;transform:translateX(-50%);
+#pause{position:absolute;top:calc(var(--safe-t) + 48px);left:50%;transform:translateX(-50%);
   width:66px;height:30px;background:none;border:none;color:#6b6590;font:inherit;
   font-size:13px;letter-spacing:.2em;cursor:pointer;opacity:.5}
 
-/* ---------- 汎用スクリーン ---------- */
+/* ---------- 画面共通 ---------- */
 .screen{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
   align-items:center;justify-content:center;padding:24px;
-  background:radial-gradient(125% 85% at 50% 8%,rgba(23,18,54,.72) 0%,rgba(7,6,15,.88) 60%);
-  animation:fade .45s ease both}
+  background:radial-gradient(125% 85% at 50% 8%,rgba(23,18,54,.74) 0%,rgba(7,6,15,.9) 60%);
+  animation:fade .4s ease both}
+.screen.scroll{justify-content:flex-start;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(var(--safe-t) + 16px) 16px calc(var(--safe-b) + 24px);-webkit-overflow-scrolling:touch}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .brand{text-align:center;margin-bottom:6px}
 .brand h1{font-size:clamp(46px,17vw,84px);font-weight:900;letter-spacing:.14em;line-height:1;
@@ -96,17 +101,103 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 .btn:active{transform:scale(.95)}
 .btn.ghost{background:transparent;color:var(--dim);box-shadow:0 0 0 1px #ffffff18 inset;
   font-size:11px;letter-spacing:.2em;padding:11px 26px;font-weight:600}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
 
-/* 型セレクト */
-.styles{display:flex;gap:9px;margin:26px 0 22px;width:100%;max-width:420px}
-.style{flex:1;pointer-events:auto;cursor:pointer;background:#ffffff06;border:1px solid #ffffff14;
-  border-radius:14px;padding:13px 6px;text-align:center;transition:.18s;position:relative;overflow:hidden}
-.style .g{font-size:27px;font-weight:900;color:var(--paper);line-height:1.1}
-.style .n{font-size:10px;letter-spacing:.14em;color:var(--dim);margin-top:5px}
-.style .d{font-size:9.5px;color:#6b6590;margin-top:6px;line-height:1.55}
-.style.sel{background:#ffd98a12;border-color:#ffd98a88;box-shadow:0 0 22px #ffd98a2e}
-.style.sel .g{color:var(--thread);text-shadow:0 0 16px #ffd98a}
-.style.sel .n{color:var(--thread)}
+/* 見出しバー（拠点系の画面） */
+.bar{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;
+  margin:0 auto 14px;gap:10px}
+.bar h2{font-size:17px;font-weight:800;letter-spacing:.22em}
+.bar .back{pointer-events:auto;cursor:pointer;background:none;border:none;font:inherit;
+  color:var(--dim);font-size:12px;letter-spacing:.14em;padding:8px 4px}
+
+/* 通貨チップ */
+.purse{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.coin{display:flex;align-items:center;gap:6px;background:#ffffff08;border:1px solid #ffffff14;
+  border-radius:99px;padding:6px 13px;font-size:13px;font-variant-numeric:tabular-nums;font-weight:700}
+.coin i{font-style:normal;font-size:11px;letter-spacing:.1em;font-weight:400;color:var(--dim)}
+.coin.lum{color:var(--thread);border-color:#ffd98a33}
+.coin.core{color:var(--core);border-color:#c08cff33}
+.coin.dew{color:var(--dew);border-color:#bfe4ff33}
+
+/* 拠点のメニュー */
+.menu{display:flex;flex-direction:column;gap:11px;width:100%;max-width:400px}
+.mitem{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:15px;
+  background:linear-gradient(100deg,#14102b,#0c0a1c);border:1px solid #ffffff16;
+  border-radius:16px;padding:17px 18px;transition:transform .12s}
+.mitem:active{transform:scale(.98)}
+.mitem .g{flex:0 0 46px;height:46px;border-radius:13px;display:grid;place-items:center;
+  font-size:23px;font-weight:900;background:#ffffff08;color:var(--thread);box-shadow:0 0 0 1px #ffd98a2e inset}
+.mitem .tt{font-size:16px;font-weight:800;letter-spacing:.1em}
+.mitem .dd{font-size:11.5px;color:var(--dim);margin-top:3px}
+.mitem.prime{background:linear-gradient(100deg,#2c2010,#0c0a1c);border-color:#ffd98a44}
+.mitem.prime .tt{color:var(--thread)}
+
+/* 夜のリスト */
+.nights{display:flex;flex-direction:column;gap:9px;width:100%;max-width:460px}
+.night{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:14px;
+  background:linear-gradient(100deg,#14102b,#0c0a1c);border:1px solid #ffffff16;
+  border-radius:14px;padding:13px 15px;transition:transform .12s;position:relative}
+.night:active{transform:scale(.98)}
+.night .no{flex:0 0 38px;height:38px;border-radius:50%;display:grid;place-items:center;
+  font-size:15px;font-weight:900;background:#ffffff08;color:var(--thread2);
+  font-variant-numeric:tabular-nums;box-shadow:0 0 0 1px #7df0ff2e inset}
+.night .tx{flex:1;min-width:0}
+.night .tt{font-size:15px;font-weight:800;letter-spacing:.08em}
+.night .dd{font-size:11px;color:var(--dim);margin-top:3px}
+.night .meta{flex:0 0 auto;text-align:right;font-size:10.5px;color:var(--dim);
+  font-variant-numeric:tabular-nums;line-height:1.7}
+.night .meta .ok{color:var(--thread);font-weight:700}
+.night.locked{opacity:.4;pointer-events:none}
+.night.locked .no{color:var(--dim);box-shadow:0 0 0 1px #ffffff16 inset}
+.night.boss{border-color:#ff9d4d44}
+.night.boss .no{color:#ff9d4d;box-shadow:0 0 0 1px #ff9d4d3a inset}
+
+/* 織機 */
+.branch{width:100%;max-width:460px;margin-bottom:20px}
+.branch h3{font-size:12px;letter-spacing:.34em;color:var(--thread);margin:0 0 4px 2px;text-indent:.34em}
+.branch .bd{font-size:10.5px;color:#5d5786;margin:0 0 10px 2px;letter-spacing:.06em}
+.nodes{display:flex;flex-direction:column;gap:8px}
+.node{display:flex;align-items:center;gap:12px;background:#0f0c22;border:1px solid #ffffff12;
+  border-radius:12px;padding:11px 13px}
+.node .g{flex:0 0 38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  font-size:18px;font-weight:900;background:#ffffff08;color:var(--thread2)}
+.node .tx{flex:1;min-width:0}
+.node .tt{font-size:13.5px;font-weight:800;letter-spacing:.06em}
+.node .dd{font-size:10.5px;color:var(--dim);margin-top:2px;line-height:1.5}
+.pips{display:flex;gap:3px;margin-top:5px}
+.pip{width:13px;height:3px;border-radius:2px;background:#2a2545}
+.pip.on{background:var(--thread);box-shadow:0 0 6px #ffd98a99}
+.pip.tier{background:#2a2545;box-shadow:0 0 0 1px #c08cff55 inset}
+.buy{pointer-events:auto;cursor:pointer;border:none;font:inherit;flex:0 0 auto;
+  background:#ffd98a;color:#160f04;font-weight:800;font-size:12px;letter-spacing:.04em;
+  padding:9px 12px;border-radius:9px;min-width:66px;text-align:center;
+  font-variant-numeric:tabular-nums;transition:transform .12s}
+.buy:active{transform:scale(.94)}
+.buy.no{background:#1c1836;color:#5d5786;cursor:default}
+.buy.max{background:#1c1836;color:var(--thread);cursor:default}
+.buy.lock{background:#1c1836;color:var(--core);cursor:default;font-size:10.5px}
+
+/* 装備 */
+.slot{width:100%;max-width:460px;margin-bottom:18px}
+.slot h3{font-size:12px;letter-spacing:.3em;color:var(--thread);margin:0 0 3px 2px}
+.slot .sd{font-size:10.5px;color:#5d5786;margin:0 0 9px 2px}
+.gears{display:flex;flex-direction:column;gap:8px}
+.gear{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:12px;
+  background:#0f0c22;border:1px solid #ffffff12;border-radius:12px;padding:11px 13px;
+  transition:transform .12s}
+.gear:active{transform:scale(.98)}
+.gear .g{flex:0 0 38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  font-size:18px;font-weight:900;background:#ffffff08;color:var(--dim)}
+.gear .tx{flex:1;min-width:0}
+.gear .tt{font-size:13.5px;font-weight:800;letter-spacing:.06em}
+.gear .dd{font-size:10.5px;color:var(--dim);margin-top:2px;line-height:1.5}
+.gear .st{flex:0 0 auto;font-size:10.5px;letter-spacing:.1em;color:var(--dim);
+  font-variant-numeric:tabular-nums;text-align:right}
+.gear.equipped{border-color:#ffd98a77;background:linear-gradient(100deg,#241a0e,#0c0a1c)}
+.gear.equipped .g{color:var(--thread);box-shadow:0 0 0 1px #ffd98a44 inset}
+.gear.equipped .st{color:var(--thread);font-weight:800}
+.gear.locked{opacity:.5}
+.gear.craft .st{color:var(--dew)}
 
 /* ---------- レベルアップ カード ---------- */
 #levelup{z-index:30;background:#05040bd9;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
@@ -138,24 +229,30 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 .card.r2 .tt{color:#ffd98a}
 
 /* ---------- 結果 ---------- */
-#result .rank{font-size:clamp(80px,26vw,130px);font-weight:900;line-height:.9;
+#result .rank{font-size:clamp(64px,20vw,104px);font-weight:900;line-height:.9;
   background:linear-gradient(180deg,#fff,var(--thread) 60%,#ff9d4d);
   -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 30px #ffd98a66)}
 #result .verdict{font-size:13px;letter-spacing:.42em;text-indent:.42em;margin-top:2px;color:var(--thread2)}
-#result .flavor{font-size:11.5px;color:var(--dim);margin-top:14px;text-align:center;line-height:1.9;max-width:330px}
-.stats{width:100%;max-width:340px;margin:22px 0 24px}
+#result .nname{font-size:11px;letter-spacing:.24em;color:var(--dim);margin-top:10px}
+.loot{width:100%;max-width:340px;margin:18px 0 8px;display:flex;flex-direction:column;gap:7px}
+.lrow{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;
+  padding:9px 13px;border-radius:10px;background:#ffffff06;border:1px solid #ffffff10;
+  letter-spacing:.08em;color:var(--dim)}
+.lrow b{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.lrow.lum b{color:var(--thread)} .lrow.dew b{color:var(--dew)} .lrow.core b{color:var(--core)}
+.lrow.miss{opacity:.42}
+.unlock{margin:10px 0 2px;font-size:12px;letter-spacing:.14em;color:var(--thread);
+  background:#ffd98a14;border:1px solid #ffd98a3a;border-radius:10px;padding:11px 14px;text-align:center}
+.stats{width:100%;max-width:340px;margin:14px 0 20px}
 .stat{display:flex;justify-content:space-between;align-items:baseline;
-  padding:9px 2px;border-bottom:1px solid #ffffff0d;font-size:12px;letter-spacing:.1em;color:var(--dim)}
-.stat b{font-size:17px;font-weight:800;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:0}
-.stat.hi b{color:var(--thread);text-shadow:0 0 14px #ffd98a55}
-.newbest{font-size:10px;letter-spacing:.3em;color:#160f04;background:var(--thread);
-  padding:2px 8px;border-radius:99px;margin-left:8px;font-weight:800;vertical-align:2px}
-.row{display:flex;gap:10px;align-items:center}
+  padding:7px 2px;border-bottom:1px solid #ffffff0d;font-size:11.5px;letter-spacing:.1em;color:var(--dim)}
+.stat b{font-size:15px;font-weight:800;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:0}
 
 #howto{max-width:400px;font-size:12px;line-height:2.1;color:var(--dim);letter-spacing:.05em}
 #howto h3{font-size:11px;letter-spacing:.4em;color:var(--thread);margin-bottom:14px;text-indent:.4em}
 #howto em{color:var(--paper);font-style:normal;font-weight:700}
 #howto .sep{height:1px;background:#ffffff10;margin:14px 0}
+.hint{font-size:10.5px;color:#4a4470;letter-spacing:.1em;margin-top:16px;text-align:center;line-height:1.8}
 </style>
 </head>
 <body>
@@ -165,8 +262,8 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 <div id="hud" class="layer hide">
   <div class="top">
     <div id="hearts"></div>
-    <div id="clock">00:00<small>NUIYO</small></div>
-    <div id="score">0<small>SCORE</small></div>
+    <div id="clock">00:00<small>のこり</small></div>
+    <div id="purse"><b id="hudLumen">0</b><small>光糸</small><span class="dw hide" id="hudDew">露 0</span></div>
   </div>
   <div id="chain"></div>
   <div id="unravel"><div class="k">解</div></div>
@@ -185,13 +282,13 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
     <div class="sub">NUIYO</div>
     <div class="tag">夜は綻び、綻びからは獣が滴る。<br>お前の指先だけが、まだ光の糸を引ける。</div>
   </div>
-  <div class="styles" id="styles"></div>
+  <div style="height:30px"></div>
   <button class="btn on" id="startBtn">縫 い 始 め る</button>
   <div class="row" style="margin-top:18px">
     <button class="btn ghost on" id="howBtn">遊 び 方</button>
     <button class="btn ghost on" id="muteBtn">♪ ON</button>
   </div>
-  <div style="font-size:10px;letter-spacing:.2em;color:#4a4470;margin-top:22px" id="bestLine"></div>
+  <div class="hint" id="bestLine"></div>
 </div>
 
 <!-- 遊び方 -->
@@ -200,17 +297,64 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
     <h3>縫 い 方</h3>
     <div><em>①</em> 画面をどこでも押さえて、指を滑らせる。<br>離すまで、その方向へ走り続ける。</div>
     <div class="sep"></div>
-    <div><em>②</em> 走った跡には<em>光の糸</em>が残る。<br>糸が<em>自分と交差して輪を閉じた瞬間</em>、<br>輪の内側にいた獣は<em>全て縫い落とされる</em>。</div>
+    <div><em>②</em> 走った跡には<em>光の糸</em>が残る。<br>糸が<em>自分と交わって輪を閉じた瞬間</em>、<br>輪の内側にいた獣は<em>全て縫い落とされる</em>。</div>
     <div class="sep"></div>
-    <div><em>③</em> 大きく囲むほど威力が上がる。<br>続けざまに閉じれば<em>連鎖</em>が乗り、倍率は跳ね上がる。</div>
+    <div><em>③</em> 針を自分の糸に近づけると、<br><em>閉じる先までの破線</em>が浮かぶ。それが目印。</div>
     <div class="sep"></div>
-    <div><em>※</em> 大きく囲むほど、糸は多く食われる。<br>使い切った糸は、走りながら伸び直す。</div>
+    <div><em>④</em> 大きく囲むほど威力が上がる。<br>続けざまに閉じれば<em>連鎖</em>が乗る。<br>ただし大きく囲むほど、糸を多く食う。</div>
     <div class="sep"></div>
-    <div><em>④</em> 「解」が満ちたら<em>短く画面を叩く</em>。<br>夜が裂け、時が緩み、糸を引き直せる。</div>
+    <div><em>⑤</em> <span style="color:#7df0ff">青い光</span>はその夜のレベル。<br><span style="color:#ffd98a">金の糸巻き</span>は<em>持ち帰れる光糸</em>。<br>拾った分は、負けても持ち帰れる。</div>
     <div class="sep"></div>
-    <div><em>⑤</em> 10分。獣の主を縫い切れば夜明けだ。</div>
+    <div><em>⑥</em> 「解」が満ちたら<em>短く画面を叩く</em>。<br>夜が裂け、時が緩む。</div>
   </div>
-  <button class="btn on" id="helpBack" style="margin-top:28px">戻 る</button>
+  <button class="btn on" id="helpBack" style="margin-top:26px">戻 る</button>
+</div>
+
+<!-- 拠点 -->
+<div id="base" class="screen scroll hide">
+  <div class="bar"><h2>拠 点</h2><span style="font-size:11px;letter-spacing:.2em;color:var(--dim)" id="baseSub"></span></div>
+  <div class="purse" id="basePurse"></div>
+  <div class="menu">
+    <div class="mitem prime on" id="goNights">
+      <div class="g">夜</div>
+      <div><div class="tt">夜へ挑む</div><div class="dd" id="goNightsSub">綻びを縫いに行く</div></div>
+    </div>
+    <div class="mitem on" id="goLoom">
+      <div class="g">織</div>
+      <div><div class="tt">織 機</div><div class="dd" id="goLoomSub">光糸で恒久的に鍛える</div></div>
+    </div>
+    <div class="mitem on" id="goGear">
+      <div class="g">装</div>
+      <div><div class="tt">装 い</div><div class="dd" id="goGearSub">針・糸・環を選ぶ</div></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:22px">
+    <button class="btn ghost on" id="baseHelp">遊 び 方</button>
+    <button class="btn ghost on" id="baseTitle">題 名 へ</button>
+  </div>
+  <div class="hint">記録を消すには長押し → <button class="btn ghost on" id="wipeBtn" style="padding:6px 14px;font-size:10px">初期化</button></div>
+</div>
+
+<!-- 夜選択 -->
+<div id="nightsel" class="screen scroll hide">
+  <div class="bar"><button class="back on" id="nsBack">‹ 拠点</button><h2>夜 を 選 ぶ</h2><span style="width:44px"></span></div>
+  <div class="purse" id="nsPurse"></div>
+  <div class="nights" id="nightList"></div>
+</div>
+
+<!-- 織機 -->
+<div id="loom" class="screen scroll hide">
+  <div class="bar"><button class="back on" id="loomBack">‹ 拠点</button><h2>織 機</h2><span style="width:44px"></span></div>
+  <div class="purse" id="loomPurse"></div>
+  <div id="loomBody" style="width:100%;max-width:460px;margin:0 auto"></div>
+  <div class="hint" id="loomHint"></div>
+</div>
+
+<!-- 装備 -->
+<div id="gear" class="screen scroll hide">
+  <div class="bar"><button class="back on" id="gearBack">‹ 拠点</button><h2>装 い</h2><span style="width:44px"></span></div>
+  <div class="purse" id="gearPurse"></div>
+  <div id="gearBody" style="width:100%;max-width:460px;margin:0 auto"></div>
 </div>
 
 <!-- レベルアップ -->
@@ -229,14 +373,18 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 </div>
 
 <!-- 結果 -->
-<div id="result" class="screen hide">
-  <div class="rank" id="rank">A</div>
-  <div class="verdict" id="verdict">夜明け</div>
-  <div class="flavor" id="flavor"></div>
+<div id="result" class="screen scroll hide">
+  <div style="text-align:center;width:100%">
+    <div class="rank" id="rank">A</div>
+    <div class="verdict" id="verdict">突破</div>
+    <div class="nname" id="rNight"></div>
+  </div>
+  <div class="loot" id="loot"></div>
+  <div id="unlockBox"></div>
   <div class="stats" id="stats"></div>
-  <button class="btn on" id="againBtn">も う 一 度</button>
-  <div style="height:12px"></div>
-  <button class="btn ghost on" id="titleBtn">題 名 へ</button>
+  <button class="btn on" id="toBaseBtn">拠 点 へ</button>
+  <div style="height:10px"></div>
+  <button class="btn ghost on" id="againBtn">も う 一 度</button>
 </div>
 
 <script>
@@ -453,6 +601,12 @@ function sfxHurt() {
 
 function sfxPick() {
   tone({ f: rnd(1500, 2100), t: 0.05, type: 'sine', g: 0.05 });
+}
+
+/** 持ち帰れるものを拾った音。経験値の光とは明確に鳴り分ける */
+function sfxLumen() {
+  tone({ f: 1180, f2: 1760, t: 0.09, type: 'triangle', g: 0.075 });
+  tone({ f: 2360, t: 0.07, type: 'sine', g: 0.035, delay: 0.03 });
 }
 
 function sfxLevel() {
@@ -798,8 +952,8 @@ function fxDrawOverlay(ctx, w, h) {
 const SPACING = 7;          // 節の間隔(px)。糸の長さ = maxPts * SPACING
 const MIN_AREA = 950;       // これ未満の輪は「よれ」として無視（誤爆防止）
 const SKIP = 2;             // 直近の節との交差は無視
-const SNAP = 24;            // 「あと少しで閉じる」を閉じたことにする距離
-const SNAP2 = SNAP * SNAP;
+const SNAP_DEFAULT = 24;    // 「あと少しで閉じる」を閉じたことにする距離
+                            // 装備で変わるため this.snap で持つ（判定式は不変）
 
 class Thread {
   constructor() {
@@ -808,6 +962,7 @@ class Thread {
     this.hot = 9;           // 先端の何節が「熱を持つ」か（接触ダメージ）
     this.age = 0;
     this.hx = 0; this.hy = 0; // 針そのものの位置（節と節の間を埋める）
+    this.snap = SNAP_DEFAULT;
   }
 
   reset(x, y) { this.p.length = 0; this.p.push(x, y); this.hx = x; this.hy = y; }
@@ -854,6 +1009,7 @@ class Thread {
     if (n < 10) return null;
     const ax = p[n - 4], ay = p[n - 3], bx = p[n - 2], by = p[n - 1];
     const last = n - 4 - SKIP * 2;
+    const snap2 = this.snap * this.snap;
 
     for (let i = 0; i < last; i += 2) {
       const cx = p[i], cy = p[i + 1], dx = p[i + 2], dy = p[i + 3];
@@ -863,7 +1019,7 @@ class Thread {
       if (hit) {
         X = hit.x; Y = hit.y;
       } else {
-        if (pointSegDist2(bx, by, cx, cy, dx, dy) > SNAP2) continue;
+        if (pointSegDist2(bx, by, cx, cy, dx, dy) > snap2) continue;
         // 線分上の最近点へ寄せて、そこで閉じたことにする
         const ex = dx - cx, ey = dy - cy;
         const len2 = ex * ex + ey * ey;
@@ -897,6 +1053,43 @@ class Thread {
       if (dx * dx + dy * dy < r2) return true;
     }
     return false;
+  }
+
+  /**
+   * 「いま輪を閉じるとしたら、どこで、どれだけ囲えるか」を返す。
+   *
+   * 計測で分かった最悪の失敗は、大きく回り込みすぎて糸が届かず、
+   * 何の反応も返らないまま死ぬこと（3回試して輪ゼロ・キルゼロ）。
+   * 閉じられる相手が視界にあることを常時見せて、この無言状態を消す。
+   */
+  previewClose(range = 130) {
+    const p = this.p, n = p.length;
+    if (n < 10) return null;
+    const hx = this.hx, hy = this.hy;
+    const last = n - 4 - SKIP * 2;
+    const r2 = range * range;
+
+    for (let i = 0; i < last; i += 2) {
+      const cx = p[i], cy = p[i + 1], dx = p[i + 2], dy = p[i + 3];
+      if (pointSegDist2(hx, hy, cx, cy, dx, dy) > r2) continue;
+
+      const ex = dx - cx, ey = dy - cy;
+      const len2 = ex * ex + ey * ey;
+      let t = len2 ? ((hx - cx) * ex + (hy - cy) * ey) / len2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const X = cx + ex * t, Y = cy + ey * t;
+
+      const flat = [X, Y];
+      for (let k = i + 2; k < n; k += 2) flat.push(p[k], p[k + 1]);
+      flat.push(hx, hy);
+      const area = Math.abs(polyArea2(flat)) * 0.5;
+      if (area < MIN_AREA) continue;
+
+      const d = Math.sqrt(pointSegDist2(hx, hy, cx, cy, dx, dy));
+      // 0=遠い 1=触れる寸前。これがそのまま表示の濃さになる
+      return { flat, area, x: X, y: Y, near: clamp(1 - (d - this.snap) / (range - this.snap), 0, 1) };
+    }
+    return null;
   }
 
   update(dt) { this.age += dt; }
@@ -964,12 +1157,12 @@ class Thread {
 // 速度はプレイヤー(約216px/s)の 4〜6 割。追い付かれはしないが、
 // 走れば必ず背後に尾を引いて群れが繋がる ── その尾を巻き取るのがこのゲームの気持ち良さ。
 const KIND = {
-  hotsure: { k: '綻', hp: 7, r: 11, spd: 78, col: [157, 140, 255], xp: 1, sc: 10, ai: 'chase' },
-  shitsu: { k: '疾', hp: 5, r: 9.5, spd: 112, col: [125, 240, 255], xp: 1, sc: 14, ai: 'dash' },
-  retsu: { k: '裂', hp: 16, r: 15, spd: 76, col: [255, 138, 208], xp: 2, sc: 24, ai: 'chase', split: 3 },
-  kake: { k: '欠', hp: 4, r: 7, spd: 124, col: [255, 176, 224], xp: 1, sc: 6, ai: 'chase' },
+  hotsure: { k: '綻', hp: 7, r: 11, spd: 78, col: [157, 140, 255], xp: 1, sc: 10, ai: 'chase', stand: 42 },
+  shitsu: { k: '疾', hp: 5, r: 9.5, spd: 94, col: [125, 240, 255], xp: 1, sc: 14, ai: 'dash' },
+  retsu: { k: '裂', hp: 16, r: 15, spd: 76, col: [255, 138, 208], xp: 2, sc: 24, ai: 'chase', split: 2, stand: 48 },
+  kake: { k: '欠', hp: 4, r: 7, spd: 124, col: [255, 176, 224], xp: 1, sc: 6, ai: 'chase', stand: 30 },
   toga: { k: '咎', hp: 14, r: 13, spd: 58, col: [255, 107, 107], xp: 3, sc: 32, ai: 'ranged' },
-  yoroi: { k: '鎧', hp: 54, r: 19, spd: 52, col: [255, 196, 107], xp: 6, sc: 70, ai: 'chase', armor: 0.45 },
+  yoroi: { k: '鎧', hp: 92, r: 19, spd: 52, col: [255, 196, 107], xp: 6, sc: 70, ai: 'chase', armor: 0.45, stand: 54 },
 };
 
 // --- スプライト焼き付け ----------------------------------------------------
@@ -1090,7 +1283,7 @@ class Swarm {
       this.a.push({
         on: false, x: 0, y: 0, vx: 0, vy: 0, hp: 1, mhp: 1, r: 10, kind: 'hotsure',
         spd: 40, t: 0, cd: 0, flash: 0, v: 0, rot: 0, spin: 0, sc: 1, elite: false,
-        frozen: 0, hitId: 0,
+        frozen: 0, hitId: 0, lunge: 0,
       });
     }
     this.alive = 0;
@@ -1114,7 +1307,7 @@ class Swarm {
       e.spd = d.spd * (elite ? 0.82 : rnd(0.9, 1.12));
       e.t = rnd(TAU); e.cd = rnd(0.4, 2.2); e.flash = 0;
       e.v = rndInt(0, 2); e.rot = rnd(TAU); e.spin = rnd(-0.5, 0.5);
-      e.elite = elite; e.frozen = 0; e.hitId = 0;
+      e.elite = elite; e.frozen = 0; e.hitId = 0; e.lunge = 0;
       this.alive++;
       return e;
     }
@@ -1152,10 +1345,20 @@ class Swarm {
       const spd = e.spd * (1 + lure * 0.15) * G.slowFactorFor(e);
 
       if (d.ai === 'dash') {
+        // 突進の前に溜めを置く。溜め中は膨れて見えるので（draw 側）、
+        // 「来る」ことが読めてから来る。予告なしの突進は夜3以降で被弾の
+        // 3〜6割を占めていたため、避けられる形に変えた。
         e.cd -= dt;
-        if (e.cd <= 0) { e.cd = rnd(1.1, 1.9); e.vx = dx * spd * 2.6; e.vy = dy * spd * 2.6; }
-        ax = dx * spd * 0.8; ay = dy * spd * 0.8;
-        e.vx = damp(e.vx, ax, 3.2, dt); e.vy = damp(e.vy, ay, 3.2, dt);
+        if (e.lunge > 0) {
+          e.lunge -= dt;
+          e.vx = damp(e.vx, 0, 8, dt); e.vy = damp(e.vy, 0, 8, dt);
+          if (e.lunge <= 0) { e.vx = dx * spd * 1.9; e.vy = dy * spd * 1.9; }
+        } else if (e.cd <= 0) {
+          e.cd = rnd(1.5, 2.3); e.lunge = 0.3;
+        } else {
+          e.vx = damp(e.vx, dx * spd * 0.7, 3.2, dt);
+          e.vy = damp(e.vy, dy * spd * 0.7, 3.2, dt);
+        }
       } else if (d.ai === 'ranged') {
         const want = 200;
         const push = dl > want ? 1 : -1.15;
@@ -1165,13 +1368,27 @@ class Swarm {
         e.vx = damp(e.vx, ax, 4, dt); e.vy = damp(e.vy, ay, 4, dt);
         e.cd -= dt;
         if (e.cd <= 0 && dl < 460) {
-          e.cd = rnd(2.0, 3.0);
-          G.bullets.spawn(e.x, e.y, dx * 155, dy * 155, 7, [255, 107, 107]);
+          e.cd = rnd(2.9, 4.1);
+          G.bullets.spawn(e.x, e.y, dx * 118, dy * 118, 8, [255, 107, 107]);
         }
       } else {
-        const sway = Math.sin(e.t * 1.6 + e.v) * 0.28;
-        ax = (dx - dy * sway) * spd;
-        ay = (dy + dx * sway) * spd;
+        // 間合いを取り、時折だけ跳びかかる。
+        //
+        // 以前は距離に関係なく直進してきたため、囲むために回り込む動線上へ
+        // 常に体が置かれ、触れ続けて削られていた（計測では被弾の 45/45 件が
+        // この基本種で、上手く回している最中でも約2秒に1回当たっていた）。
+        // 接触を「連続的な摩耗」から「読み取れる一瞬」に変える。
+        const stand = d.stand || 0;
+        if (stand > 0) {
+          e.cd -= dt;
+          if (e.cd <= 0) { e.cd = rnd(2.4, 4.2); e.lunge = 0.5; }
+          if (e.lunge > 0) e.lunge -= dt;
+        }
+        const closing = stand === 0 || e.lunge > 0 || dl > stand;
+        const sway = Math.sin(e.t * 1.6 + e.v) * (closing ? 0.28 : 0.95);
+        const push = closing ? 1 : -0.3;
+        ax = (dx * push - dy * sway) * spd;
+        ay = (dy * push + dx * sway) * spd;
         e.vx = damp(e.vx, ax, 5, dt); e.vy = damp(e.vy, ay, 5, dt);
       }
 
@@ -1200,9 +1417,24 @@ class Swarm {
       // 遠く離れすぎた個体は回収（画面外で無限に彷徨わせない）
       if (dist2(e.x, e.y, px, py) > 1700 * 1700) { e.on = false; this.alive--; continue; }
 
-      // 接触（芯が触れたときだけ。掠り判定で理不尽にならないよう内側で取る）
+      // 接触。
+      //
+      // 「囲む」には必ず群れの中へ戻る必要があり、群れは常にこちらへ寄ってくる。
+      // つまり回り込む動線上には必ず体が置かれる ── これは間合いを調整しても
+      // 消えない、機構そのものが持つ幾何。実測でも被弾の 100% が基本種だった。
+      // そこで基本種の「ただ触れているだけ」は痛くせず、押しのけて通す。
+      // 針は布を裂かずに分けて進む、という筋も通る。
+      // 痛いのは跳びかかってきた個体・精鋭・専門種だけ。
       const rr = e.r * 0.78 + G.player.r * 0.8;
-      if (dist2(e.x, e.y, px, py) < rr * rr) G.hurtPlayer(e);
+      if (dist2(e.x, e.y, px, py) < rr * rr) {
+        if (!d.stand || e.lunge > 0 || e.elite) {
+          G.hurtPlayer(e);
+        } else {
+          const ox = e.x - px, oy = e.y - py;
+          const od = Math.hypot(ox, oy) || 1;
+          e.vx += (ox / od) * 300; e.vy += (oy / od) * 300;
+        }
+      }
 
       // 針先の熱
       if (G.stats.needle > 0 && G.thread.touchesHot(e.x, e.y, e.r + 7)) {
@@ -1253,7 +1485,7 @@ class Swarm {
       if (!e.on) continue;
       if (e.x < view.x0 || e.x > view.x1 || e.y < view.y0 || e.y > view.y1) continue;
       const sp = sprites.get(e.flash > 0.35 ? e.kind + '!' : e.kind)[e.v];
-      const s = e.sc * (1 + Math.sin(e.t * 5 + e.v) * 0.035) * dpr;
+      const s = e.sc * (1 + Math.sin(e.t * 5 + e.v) * 0.035 + (e.lunge > 0 ? 0.16 : 0)) * dpr;
       const ang = Math.atan2(e.vy, e.vx);
       const co = Math.cos(ang) * s, si = Math.sin(ang) * s;
       ctx.setTransform(co, si, -si, co, (e.x + ox) * dpr, (e.y + oy) * dpr);
@@ -1315,21 +1547,28 @@ class Bullets {
   }
 }
 
-// --- 光（経験値） -----------------------------------------------------------
+// --- 落ちるもの（光・光糸・霧の露） -----------------------------------------
+// kind 0=光(その場の経験値) 1=光糸(持ち帰る通貨) 2=霧の露(章素材)
+// 拾った瞬間に「今回のための光」か「持ち帰れるもの」か分かることが要件なので、
+// 色だけでなく形も変えている。光=菱形、光糸=糸巻き、露=雫。
+const MOTE_XP = 0, MOTE_LUMEN = 1, MOTE_DEW = 2;
+
 class Motes {
   constructor(cap = 900) {
     this.a = [];
-    for (let i = 0; i < cap; i++) this.a.push({ on: false, x: 0, y: 0, vx: 0, vy: 0, v: 1, t: 0, pull: false });
+    for (let i = 0; i < cap; i++) {
+      this.a.push({ on: false, x: 0, y: 0, vx: 0, vy: 0, v: 1, t: 0, pull: false, kind: 0 });
+    }
     this.cap = cap;
   }
   clear() { for (const m of this.a) m.on = false; }
-  spawn(x, y, v) {
+  spawn(x, y, v, kind = MOTE_XP) {
     for (let i = 0; i < this.cap; i++) {
       const m = this.a[i];
       if (m.on) continue;
       const a = rnd(TAU), s = rnd(40, 120);
       m.on = true; m.x = x; m.y = y; m.vx = Math.cos(a) * s; m.vy = Math.sin(a) * s;
-      m.v = v; m.t = 0; m.pull = false;
+      m.v = v; m.t = 0; m.pull = false; m.kind = kind;
       return;
     }
   }
@@ -1341,38 +1580,73 @@ class Motes {
       if (!m.on) continue;
       m.t += dt;
       const d2 = dist2(m.x, m.y, px, py);
-      if (!m.pull && (d2 < R2 || G.magnetAll)) m.pull = true;
+      // 持ち帰れるものは少し広く吸い寄せる（取り逃しが報酬の減少に直結するため）
+      const rr = m.kind === MOTE_XP ? R2 : R2 * 1.6;
+      if (!m.pull && (d2 < rr || G.magnetAll)) m.pull = true;
       if (m.pull) {
         const d = Math.sqrt(d2) || 1;
         const s = clamp(760 - d * 0.5, 220, 900);
         m.vx = damp(m.vx, ((px - m.x) / d) * s, 9, dt);
         m.vy = damp(m.vy, ((py - m.y) / d) * s, 9, dt);
-        if (d2 < 380) { m.on = false; G.collect(m.v); continue; }
+        if (d2 < 380) { m.on = false; G.collect(m.v, m.kind); continue; }
       } else {
         m.vx *= Math.exp(-4 * dt); m.vy *= Math.exp(-4 * dt);
       }
       m.x += m.vx * dt; m.y += m.vy * dt;
     }
   }
-  /** 数百個を1パスにまとめる（色は2種だけなのでパスも2本で済む） */
   draw(ctx, view) {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (let pass = 0; pass < 2; pass++) {
-      let started = false;
-      for (const m of this.a) {
-        if (!m.on || (m.v > 3) !== (pass === 1)) continue;
-        if (m.x < view.x0 || m.x > view.x1 || m.y < view.y0 || m.y > view.y1) continue;
-        if (!started) { ctx.beginPath(); started = true; }
-        const s = 2.3 + Math.sin(m.t * 7) * 0.5 + (m.v > 1 ? 1.4 : 0);
-        ctx.moveTo(m.x, m.y - s * 2); ctx.lineTo(m.x + s, m.y);
-        ctx.lineTo(m.x, m.y + s * 2); ctx.lineTo(m.x - s, m.y);
-        ctx.closePath();
-      }
-      if (started) {
-        ctx.fillStyle = pass === 1 ? 'rgba(255,217,138,.95)' : 'rgba(125,240,255,.9)';
-        ctx.fill();
-      }
+
+    // 光：菱形。数が多いので1パスにまとめる
+    let started = false;
+    for (const m of this.a) {
+      if (!m.on || m.kind !== MOTE_XP) continue;
+      if (m.x < view.x0 || m.x > view.x1 || m.y < view.y0 || m.y > view.y1) continue;
+      if (!started) { ctx.beginPath(); started = true; }
+      const s = 2.3 + Math.sin(m.t * 7) * 0.5;
+      ctx.moveTo(m.x, m.y - s * 2); ctx.lineTo(m.x + s, m.y);
+      ctx.lineTo(m.x, m.y + s * 2); ctx.lineTo(m.x - s, m.y);
+      ctx.closePath();
+    }
+    if (started) { ctx.fillStyle = 'rgba(125,240,255,.9)'; ctx.fill(); }
+
+    // 光糸：金の糸巻き。回りながら瞬く
+    for (const m of this.a) {
+      if (!m.on || m.kind !== MOTE_LUMEN) continue;
+      if (m.x < view.x0 || m.x > view.x1 || m.y < view.y0 || m.y > view.y1) continue;
+      const r = 4.4 + Math.sin(m.t * 5) * 0.6;
+      const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r * 3);
+      g.addColorStop(0, 'rgba(255,240,190,.95)');
+      g.addColorStop(.4, 'rgba(255,200,100,.5)');
+      g.addColorStop(1, 'rgba(255,170,60,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(m.x, m.y, r * 3, 0, TAU); ctx.fill();
+      ctx.save();
+      ctx.translate(m.x, m.y); ctx.rotate(m.t * 2.2);
+      ctx.strokeStyle = 'rgba(255,236,180,.95)'; ctx.lineWidth = 1.7;
+      ctx.strokeRect(-r * .72, -r * .72, r * 1.44, r * 1.44);
+      ctx.beginPath(); ctx.moveTo(-r, 0); ctx.lineTo(r, 0); ctx.stroke();
+      ctx.restore();
+    }
+
+    // 霧の露：淡い雫
+    for (const m of this.a) {
+      if (!m.on || m.kind !== MOTE_DEW) continue;
+      if (m.x < view.x0 || m.x > view.x1 || m.y < view.y0 || m.y > view.y1) continue;
+      const r = 4 + Math.sin(m.t * 4) * 0.7;
+      const g = ctx.createRadialGradient(m.x, m.y, 0, m.x, m.y, r * 3.2);
+      g.addColorStop(0, 'rgba(255,255,255,.95)');
+      g.addColorStop(.35, 'rgba(190,230,255,.6)');
+      g.addColorStop(1, 'rgba(150,200,255,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(m.x, m.y, r * 3.2, 0, TAU); ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,.95)';
+      ctx.beginPath();
+      ctx.moveTo(m.x, m.y - r * 1.5); ctx.lineTo(m.x + r * .8, m.y + r * .6);
+      ctx.lineTo(m.x, m.y + r * 1.2); ctx.lineTo(m.x - r * .8, m.y + r * .6);
+      ctx.closePath(); ctx.fill();
     }
     ctx.restore();
   }
@@ -1382,14 +1656,14 @@ class Motes {
 class Boss {
   constructor() { this.on = false; }
 
-  spawn(x, y, hp, final) {
+  spawn(x, y, hp, final, name) {
     this.on = true; this.final = final;
     this.x = x; this.y = y; this.vx = 0; this.vy = 0;
     this.r = final ? 74 : 58;
     this.hp = this.mhp = hp;
     this.t = 0; this.cd = 3.2; this.cd2 = 6; this.rot = 0; this.flash = 0;
     this.spiral = 0; this.frozen = 0;
-    this.name = final ? '織主・終' : '織主';
+    this.name = name || '織主';
   }
 
   get phase() { const f = this.hp / this.mhp; return f < 0.32 ? 2 : f < 0.66 ? 1 : 0; }
@@ -1539,8 +1813,8 @@ function baseStats() {
     magnet: 96,        // 光の吸引半径
     chainWindow: 3.4,  // 連鎖の猶予(秒)
     chainMax: 6,
-    maxHp: 6,
-    iframe: 1.15,
+    maxHp: 8,
+    iframe: 1.6,
     needle: 0,         // 針先の接触DPS
     lure: 0,           // 敵を寄せる度合い
     pierce: false,     // 鎧無視
@@ -1552,6 +1826,9 @@ function baseStats() {
     moteMul: 1,
     doubleStitch: 0,   // 領域内への追撃回数
     twin: 0,           // 縫閉時、自分の周りにも輪が生まれる
+    snap: 24,          // 輪が閉じたことにする距離(px)。装備「霞糸」が触る
+    startGauge: 0,     // 「解」の初期充填
+    flinch: 1,         // 被弾時に敵を押し退ける強さの倍率
   };
 }
 
@@ -1680,6 +1957,328 @@ function drawCards(levels, n = 3) {
   return out;
 }
 
+/* ===== src/nights.js ===== */
+// 夜（ステージ）の定義。難度はここだけで決まる。
+//
+// 以前は難度が game.js の中の経過時間ハードコード（t > 50 / 135 / 205…）で
+// 作られていたため、夜を短く切ると敵種が半分も出なかった。
+// 敵構成・敵HP・湧き密度・レベル曲線をすべて夜の側へ移してある。
+
+/**
+ * dens  : 同時に何体いてほしいか。base + t*growth（cap で頭打ち）
+ * ceil  : 1秒あたり何体まで湧かせてよいか。base + t*growth
+ *         ── 総キル数はほぼこの上限で決まる（計測済み）ので、
+ *            「上位の夜ほど多く倒せる」はここで作る
+ * kinds : 種ごとの登場時刻と重み。w = w0 + (t - at) * wg
+ * xpScale: レベル曲線の伸縮。夜ごとに目標Lvへ着地させるための係数
+ */
+const NIGHTS = [
+  {
+    id: 1, name: '初めの綻び', sub: 'まず、囲む',
+    dur: 150, baseHp: 1.00, ramp: 0.0016, targetLv: 6, xpScale: 4.3, lumenRate: 0.28, dewRate: 0,
+    dens: { base: 16, growth: 0.12, cap: 42 },
+    ceil: { base: 1.8, growth: 0.036 },
+    kinds: [{ k: 'hotsure', at: 0, w0: 10, wg: 0 }],
+    boss: null,
+    reward: { clear: 70, firstCores: 0 },
+    teach: '輪の内側は、すべて縫い落ちる',
+  },
+  {
+    id: 2, name: '群れる夜', sub: '大きく囲む',
+    dur: 210, baseHp: 1.08, ramp: 0.0016, targetLv: 8, xpScale: 5.2, lumenRate: 0.24, dewRate: 0.007,
+    dens: { base: 17, growth: 0.14, cap: 54 },
+    ceil: { base: 2.1, growth: 0.042 },
+    kinds: [
+      { k: 'hotsure', at: 0, w0: 10, wg: 0 },
+      { k: 'shitsu', at: 48, w0: 3, wg: 0.010 },
+    ],
+    boss: null,
+    reward: { clear: 105, firstCores: 0 },
+    teach: '広く囲むほど、深く縫える',
+  },
+  {
+    id: 3, name: '裂ける夜', sub: '二度縫う',
+    dur: 225, baseHp: 1.20, ramp: 0.0017, targetLv: 10, xpScale: 8.0, lumenRate: 0.13, dewRate: 0.005,
+    dens: { base: 17, growth: 0.14, cap: 60 },
+    ceil: { base: 2.4, growth: 0.046 },
+    kinds: [
+      { k: 'hotsure', at: 0, w0: 9, wg: 0 },
+      { k: 'shitsu', at: 20, w0: 5, wg: 0.014 },
+      { k: 'retsu', at: 70, w0: 2.4, wg: 0.011 },
+    ],
+    boss: null,
+    reward: { clear: 150, firstCores: 0 },
+    teach: '裂は分かれる。二度目を見越して縫え',
+  },
+  {
+    id: 4, name: '間合いの夜', sub: '弾を払う',
+    dur: 240, baseHp: 1.32, ramp: 0.0018, targetLv: 12, xpScale: 9.4, lumenRate: 0.12, dewRate: 0.004,
+    dens: { base: 18, growth: 0.15, cap: 70 },
+    ceil: { base: 2.7, growth: 0.050 },
+    kinds: [
+      { k: 'hotsure', at: 0, w0: 8, wg: 0 },
+      { k: 'shitsu', at: 15, w0: 5, wg: 0.012 },
+      { k: 'retsu', at: 55, w0: 3, wg: 0.010 },
+      { k: 'toga', at: 95, w0: 1.6, wg: 0.008 },
+      { k: 'yoroi', at: 150, w0: 0.7, wg: 0.004 },
+    ],
+    boss: null,
+    reward: { clear: 205, firstCores: 0 },
+    teach: '飛んでくるものは、糸の先で払える',
+  },
+  {
+    id: 5, name: '織主・綻', sub: '硬い相手を崩す',
+    dur: 300, baseHp: 1.45, ramp: 0.0019, targetLv: 15, xpScale: 4.3, lumenRate: 0.17, dewRate: 0.005,
+    dens: { base: 20, growth: 0.17, cap: 84 },
+    ceil: { base: 3.0, growth: 0.056 },
+    kinds: [
+      { k: 'hotsure', at: 0, w0: 8, wg: 0 },
+      { k: 'shitsu', at: 10, w0: 5, wg: 0.011 },
+      { k: 'retsu', at: 45, w0: 3, wg: 0.009 },
+      { k: 'toga', at: 75, w0: 1.8, wg: 0.007 },
+      { k: 'yoroi', at: 70, w0: 1.6, wg: 0.007 },
+    ],
+    // 制限時間の 45% 地点で出現。倒しても夜は続き、時間まで生き延びれば突破
+    boss: { at: 0.45, hp: 2300, name: '織主・綻', final: true },
+    reward: { clear: 300, firstCores: 2 },
+    teach: '鎧と織主は、一縫では落ちない',
+  },
+];
+
+const nightById = id => NIGHTS.find(n => n.id === id) || NIGHTS[0];
+
+/** その夜で出る種の重み表を、経過時間から作る */
+function nightSpawnPlan(night, t) {
+  const w = [];
+  for (const k of night.kinds) {
+    if (t < k.at) continue;
+    w.push({ kind: k.k, w: Math.max(0.2, k.w0 + (t - k.at) * k.wg) });
+  }
+  if (!w.length) w.push({ kind: 'hotsure', w: 1 });
+  return w;
+}
+
+/* ===== src/meta.js ===== */
+// ステージ外の恒久成長。保存・通貨・織機・装備。
+//
+// 設計の背骨：恒久強化で買えるのは「生存」と「可能性」、そして
+// 「腕への見返り倍率」。火力(dmg)は上限 +25% までに抑え、それ単体では
+// 硬い相手を一縫で落とせない水準に置く（面積と連鎖を組み合わせて初めて届く）。
+//
+// 敵の密度を上げるノードは意図的に置いていない。
+// 自分を鍛えたら敵が増えるのは成長感と噛み合わないため、密度は夜（難易度側）の管轄。
+
+const KEY = 'nuiyo.save';
+const VERSION = 1;
+
+function blank() {
+  return {
+    v: VERSION,
+    lumen: 0,          // 光糸：汎用通貨
+    cores: 0,          // 綻び核：Rank解放の鍵
+    dew: 0,            // 霧の露：章素材。装備を編む
+    loom: {},          // ノードid -> 取得段数
+    gear: { needle: 'plain', thread: 'plain', ring: 'plain' },
+    owned: ['needle.plain', 'thread.plain', 'ring.plain'],
+    nights: {},        // 夜id -> { cleared, bestScore, bestKills }
+    unlocked: 1,       // 解放済みの最大の夜
+  };
+}
+
+function loadSave() {
+  try {
+    const raw = localStorage.getItem(KEY);
+    if (!raw) return blank();
+    const s = JSON.parse(raw);
+    if (!s || s.v !== VERSION) return blank();   // 読めない形は初期値へ戻す
+    const b = blank();
+    return { ...b, ...s, loom: { ...s.loom }, gear: { ...b.gear, ...s.gear }, nights: { ...s.nights } };
+  } catch { return blank(); }
+}
+
+function writeSave(s) {
+  try { localStorage.setItem(KEY, JSON.stringify(s)); } catch { /* 保存できなくても遊べる */ }
+}
+
+function resetSave() {
+  try { localStorage.removeItem(KEY); } catch { /* noop */ }
+  return blank();
+}
+
+// --- 織機 -----------------------------------------------------------------
+// 段階ごとの価格。Rank が上がるほど重くなる
+const RANK_COST = [70, 150, 280, 460, 700];
+// Rank の解放段階。0 は最初から、1 以降は綻び核で開く
+const TIER_OF_RANK = [0, 0, 1, 1, 2];
+const TIER_CORES = [0, 2, 6];
+
+const LOOM = [
+  // 糸 ── 何が可能になるか
+  { id: 'threadLen', br: '糸', g: '長', n: '長糸', max: 5, step: 0.06,
+    d: r => `糸の長さ +${(r * 6)}%`, apply: (s, r) => { s.threadPts = Math.round(s.threadPts * (1 + r * 0.06)); } },
+  { id: 'snap', br: '糸', g: '寄', n: '閉じ寄せ', max: 3, step: 3,
+    d: r => `輪が閉じる距離 +${r * 3}px`, apply: (s, r) => { s.snap += r * 3; } },
+
+  // 針 ── 生存
+  { id: 'maxHp', br: '針', g: '殻', n: '堅殻', max: 4, step: 1,
+    d: r => `最大HP +${r}`, apply: (s, r) => { s.maxHp += r; } },
+  { id: 'iframe', br: '針', g: '軽', n: '軽身', max: 3, step: 0.12,
+    d: r => `被弾後の無敵 +${(r * 0.12).toFixed(2)}秒`, apply: (s, r) => { s.iframe += r * 0.12; } },
+  { id: 'speed', br: '針', g: '疾', n: '疾走', max: 3, step: 0.03,
+    d: r => `移動速度 +${r * 3}%`, apply: (s, r) => { s.speed *= (1 + r * 0.03); } },
+
+  // 環 ── 腕への見返り
+  { id: 'areaScale', br: '環', g: '輪', n: '大輪', max: 4, step: 0.12,
+    d: r => `面積による威力補正 +${(r * 0.12).toFixed(2)}`, apply: (s, r) => { s.areaScale += r * 0.12; } },
+  { id: 'chainWin', br: '環', g: '環', n: '連環', max: 3, step: 0.3,
+    d: r => `連鎖の猶予 +${(r * 0.3).toFixed(1)}秒`, apply: (s, r) => { s.chainWindow += r * 0.3; } },
+  { id: 'chainMax', br: '環', g: '重', n: '重連', max: 2, step: 2,
+    d: r => `連鎖の上限 +${r * 2}`, apply: (s, r) => { s.chainMax += r * 2; } },
+  { id: 'dmg', br: '環', g: '鋭', n: '鋭刃', max: 5, step: 0.05,
+    d: r => `縫撃の威力 +${r * 5}%`, apply: (s, r) => { s.dmg *= (1 + r * 0.05); } },
+  { id: 'unravel', br: '環', g: '解', n: '解放', max: 3, step: 0.12,
+    d: r => `「解」を +${r * 12}% 溜めた状態で始まる`, apply: (s, r) => { s.startGauge += r * 0.12; } },
+  { id: 'mote', br: '環', g: '穫', n: '収穫', max: 3, step: 0.10,
+    d: r => `光の実り +${r * 10}%`, apply: (s, r) => { s.moteMul *= (1 + r * 0.10); } },
+  { id: 'magnet', br: '環', g: '引', n: '引寄', max: 3, step: 0.20,
+    d: r => `光を集める範囲 +${r * 20}%`, apply: (s, r) => { s.magnet *= (1 + r * 0.20); } },
+];
+
+const loomRank = (save, id) => save.loom[id] || 0;
+
+/** 綻び核の所持数で、いま何段目まで開けられるか */
+function unlockedTier(save) {
+  let t = 0;
+  for (let i = 0; i < TIER_CORES.length; i++) if (save.cores >= TIER_CORES[i]) t = i;
+  return t;
+}
+
+/** 次の1段を買えるか。買えない理由も返す */
+function canBuy(save, node) {
+  const r = loomRank(save, node.id);
+  if (r >= node.max) return { ok: false, why: 'max' };
+  if (TIER_OF_RANK[r] > unlockedTier(save)) return { ok: false, why: 'locked', needCores: TIER_CORES[TIER_OF_RANK[r]] };
+  const cost = RANK_COST[r];
+  if (save.lumen < cost) return { ok: false, why: 'poor', cost };
+  return { ok: true, cost };
+}
+
+function buyNode(save, node) {
+  const c = canBuy(save, node);
+  if (!c.ok) return false;
+  save.lumen -= c.cost;
+  save.loom[node.id] = loomRank(save, node.id) + 1;
+  writeSave(save);
+  return true;
+}
+
+// --- 装備 -----------------------------------------------------------------
+// すべて既存の stats フラグに乗る。数値の棒ではなく「縫い方」を変える。
+const GEAR = {
+  needle: [
+    { id: 'plain', n: '常針', g: '常', d: '癖のない針', cost: 0, night: 0, apply: () => {} },
+    { id: 'burn', n: '灼針', g: '灼', d: '針先が灼く（+18/秒）。ただし、ひるみで押し退けられなくなる',
+      cost: 10, night: 3, apply: s => { s.needle += 18; s.flinch = 0.35; } },
+    { id: 'swift', n: '疾針', g: '疾', d: '移動速度 +12% / 最大HP −1',
+      cost: 10, night: 2, apply: s => { s.speed *= 1.12; s.maxHp -= 1; } },
+  ],
+  thread: [
+    { id: 'plain', n: '常糸', g: '常', d: '癖のない糸', cost: 0, night: 0, apply: () => {} },
+    { id: 'haze', n: '霞糸', g: '霞', d: '糸の長さ −25% / 閉じる距離 2.5倍。小さく速い輪を続けて閉じる',
+      cost: 12, night: 2, apply: s => { s.threadPts = Math.round(s.threadPts * 0.75); s.snap = Math.round(s.snap * 2.5); } },
+    { id: 'rope', n: '大縄', g: '縄', d: '糸の長さ +35% / 移動速度 −8%。一度に大きく巻き取る',
+      cost: 12, night: 3, apply: s => { s.threadPts = Math.round(s.threadPts * 1.35); s.speed *= 0.92; } },
+  ],
+  ring: [
+    { id: 'plain', n: '常環', g: '常', d: '癖のない環', cost: 0, night: 0, apply: () => {} },
+    { id: 'twin', n: '双環', g: '双', d: '縫った瞬間、自分の周りにも輪が生まれる',
+      cost: 14, night: 4, apply: s => { s.twin += 1; } },
+    { id: 'echo', n: '響環', g: '響', d: '0.5秒後、同じ輪がもう一度縫われる',
+      cost: 14, night: 4, apply: s => { s.echo += 1; } },
+  ],
+};
+
+const SLOTS = [
+  { key: 'needle', n: '針', d: '移動と接触' },
+  { key: 'thread', n: '糸', d: '長さと閉じ方' },
+  { key: 'ring', n: '環', d: '閉じた瞬間' },
+];
+
+const gearItem = (slot, id) => GEAR[slot].find(x => x.id === id) || GEAR[slot][0];
+const gearOwned = (save, slot, id) => save.owned.includes(slot + '.' + id);
+
+function canCraft(save, slot, item) {
+  if (gearOwned(save, slot, item.id)) return { ok: false, why: 'owned' };
+  if ((save.nights[item.night] || {}).cleared !== true) return { ok: false, why: 'night', night: item.night };
+  if (save.dew < item.cost) return { ok: false, why: 'poor', cost: item.cost };
+  return { ok: true, cost: item.cost };
+}
+
+function craftGear(save, slot, item) {
+  const c = canCraft(save, slot, item);
+  if (!c.ok) return false;
+  save.dew -= c.cost;
+  save.owned.push(slot + '.' + item.id);
+  writeSave(save);
+  return true;
+}
+
+function equipGear(save, slot, id) {
+  if (!gearOwned(save, slot, id)) return false;
+  save.gear[slot] = id;
+  writeSave(save);
+  return true;
+}
+
+// --- 適用 -----------------------------------------------------------------
+/** 走り出す直前の stats に、恒久強化と装備を乗せる */
+function applyMeta(stats, save) {
+  for (const node of LOOM) {
+    const r = loomRank(save, node.id);
+    if (r > 0) node.apply(stats, r);
+  }
+  for (const s of SLOTS) gearItem(s.key, save.gear[s.key]).apply(stats);
+  stats.maxHp = Math.max(1, stats.maxHp);
+  stats.threadPts = Math.max(30, stats.threadPts);
+  return stats;
+}
+
+// --- 走り終えたあとの精算 ---------------------------------------------------
+/**
+ * 拾ったものは勝敗に関わらず持ち帰る。踏破報酬はクリア時のみ。
+ * 綻び核と次の夜の解放は初回クリアのみ。
+ */
+function settle(save, night, result) {
+  const rec = save.nights[night.id] || { cleared: false, bestScore: 0, bestKills: 0 };
+  const first = result.win && !rec.cleared;
+
+  const gained = { lumen: result.lumen, dew: result.dew, clear: 0, cores: 0, unlocked: 0, first };
+
+  save.lumen += result.lumen;
+  save.dew += result.dew;
+
+  if (result.win) {
+    gained.clear = night.reward.clear;
+    save.lumen += night.reward.clear;
+    if (first) {
+      gained.cores = night.reward.firstCores;
+      save.cores += night.reward.firstCores;
+      const next = night.id + 1;
+      if (next > save.unlocked) { save.unlocked = next; gained.unlocked = next; }
+    } else if (night.reward.firstCores > 0) {
+      gained.cores = 1;                 // 織主の再撃破は1個
+      save.cores += 1;
+    }
+    rec.cleared = true;
+  }
+
+  rec.bestScore = Math.max(rec.bestScore, Math.round(result.score));
+  rec.bestKills = Math.max(rec.bestKills, result.kills);
+  save.nights[night.id] = rec;
+  writeSave(save);
+  return gained;
+}
+
 /* ===== src/game.js ===== */
 // ゲーム本体。状態・進行・描画の統合。
 
@@ -1690,9 +2289,9 @@ function drawCards(levels, n = 3) {
 
 
 
-const RUN_TIME = 600;      // 10分
-const BOSS1_T = 270;              // 4:30
-const FINAL_T = 510;              // 8:30
+
+
+const RUN_TIME = 600;      // 旧単位。夜ごとの制限時間は night.dur
 
 const STATE = { RUN: 'run', LEVEL: 'level', OVER: 'over', PAUSE: 'pause' };
 
@@ -1710,6 +2309,7 @@ class Game {
     this.player = { x: 0, y: 0, r: 9, hp: 5, inv: 0, ang: -Math.PI / 2, vx: 0, vy: 0 };
     this.state = STATE.OVER;
     this.frame = 0;
+    this.night = nightById(1);
     // main.js が差し込むフック
     this.onLevelUp = null; this.onEnd = null; this.onToast = null;
     bakeSprites();
@@ -1728,11 +2328,17 @@ class Game {
   }
 
   // ======================================================================
-  start(styleId) {
+  /**
+   * 夜へ挑む。恒久強化と装備はここで一度だけ stats に乗る。
+   * @param {number} nightId
+   * @param {object} save  meta.js のセーブ。省略時は素の状態
+   */
+  start(nightId, save) {
+    const night = nightById(nightId);
+    this.night = night;
+
     const st = baseStats();
-    const style = STYLES.find(s => s.id === styleId) || STYLES[0];
-    style.apply(st);
-    this.style = style;
+    if (save) applyMeta(st, save);
     this.stats = st;
     this.levels = {};
 
@@ -1746,6 +2352,7 @@ class Game {
     this.cam = { x: 0, y: 0 };
 
     this.thread.maxPts = st.threadPts;
+    this.thread.snap = st.snap;
     this.thread.reset(0, 0);
 
     this.swarm.clear(); this.bullets.clear(); this.motes.clear();
@@ -1754,17 +2361,19 @@ class Game {
 
     this.xp = 0; this.lv = 1; this.xpNeed = this.needFor(1);
     this.chain = 0; this.chainT = 0;
-    this.gauge = 0; this.unravelT = 0; this.magnetAll = false;
+    this.gauge = clamp(st.startGauge, 0, 0.9);
+    this.unravelT = 0; this.magnetAll = false;
     this.enemyTS = 1;
 
     this.kills = 0; this.score = 0; this.maxChain = 0; this.bestLoop = 0; this.stitches = 0;
+    this.lumen = 0; this.dew = 0;                 // 拾った分だけ持ち帰る
     this.burns = []; this.echoes = []; this.shocks = []; this.shockId = 1;
-    this.spawnAcc = 0; this.surgeT = 30; this.surge = 0;
-    this.bossPhase = 0; this.result = null; this.winT = 0;
+    this.spawnAcc = 0; this.surgeT = 26; this.surge = 0;
+    this.bossSpawned = false; this.result = null; this.winT = 0;
     this.tutorial = 0;
 
     musicStart(); musicIntensity(0);
-    this.toast('指を滑らせて、光の糸を引け', 3.2);
+    this.toast(night.teach, 3.2);
   }
 
   /**
@@ -1804,10 +2413,11 @@ class Game {
     fxUpdate(dt);
   }
 
-  // 10分で概ね LV30 前後に着地する曲線
-  needFor(lv) { return Math.floor(9 + lv * 6 + lv * lv * 0.12); }
+  // 夜ごとに目標Lvへ着地させる。短い夜で札が増えすぎないよう xpScale で伸縮する
+  needFor(lv) { return Math.floor((9 + lv * 6 + lv * lv * 0.12) * this.night.xpScale); }
 
-  get hpMul() { return 1 + this.t * 0.0078 + (this.t > FINAL_T ? 1.2 : 0); }
+  get hpMul() { return this.night.baseHp * (1 + this.t * this.night.ramp); }
+  get timeLeft() { return Math.max(0, this.night.dur - this.t); }
   get chainMult() { return 1 + Math.max(0, this.chain - 1) * 0.5; }
 
   slowFactorFor() { return this.enemyTS; }
@@ -1859,13 +2469,18 @@ class Game {
 
     // 緊張度（BGMの密度）
     const dens = clamp(this.swarm.alive / 160, 0, 1);
-    musicIntensity(clamp(this.t / RUN_TIME * 0.6 + dens * 0.4 + (this.boss.on ? 0.3 : 0), 0, 1));
+    musicIntensity(clamp(this.t / this.night.dur * 0.6 + dens * 0.4 + (this.boss.on ? 0.3 : 0), 0, 1));
 
     if (this.winT > 0) {
       this.winT -= dt;
       if (this.winT <= 0) { this.finish(true); return; }
     }
-    if (this.player.hp <= 0) this.finish(false);
+    if (this.player.hp <= 0) { this.finish(false); return; }
+
+    // 制限時間。織主のいる夜は「倒せば突破」、いない夜は「生き延びれば突破」
+    if (this.t >= this.night.dur) {
+      this.finish(!this.night.boss);
+    }
   }
 
   updatePlayer(dt) {
@@ -1893,8 +2508,17 @@ class Game {
     this.cam.x = damp(this.cam.x, tx2, 7, dt);
     this.cam.y = damp(this.cam.y, ty2, 7, dt);
 
-    // チュートリアル
-    if (this.tutorial === 0 && this.stitches > 0) {
+    // 導入の言葉。ここは「輪をまだ一度も閉じていない人」を最優先で拾う。
+    // 計測では、大きく回りすぎた人が最後まで一度も閉じられずに死んでいた。
+    if (this.stitches === 0) {
+      if (this.tutorial === 0 && this.t > 11) {
+        this.tutorial = 0.5;
+        this.toast('自分の糸に触れると、輪が閉じる', 3.4);
+      } else if (this.tutorial === 0.5 && this.t > 24) {
+        this.tutorial = 0.6;
+        this.toast('小さく回れ。糸の届く範囲で', 3.4);
+      }
+    } else if (this.tutorial < 1) {
       this.tutorial = 1;
       this.toast('輪の内側は、すべて縫い落ちる', 3.0);
     } else if (this.tutorial === 1 && this.stitches >= 6) {
@@ -1980,6 +2604,15 @@ class Game {
       if (killed >= 3) fxPop(b.cx, b.cy, `${killed}`, col, 15 + Math.min(killed, 26));
       sfxStitch(Math.max(1, this.chain), clamp(killed / 22, 0, 1));
       this.gauge = clamp(this.gauge + killed * 0.009 * st.unravelGain, 0, 1);
+
+      // 縫った直後は針が身を守る。
+      // 「囲む」には獣の隣にいる必要があり、獣は触れると痛い ── つまり
+      // 上手く遊ぶほど削られる、という矛盾が構造的にあった（計測では
+      // 30秒で40〜80体倒す操作をしても22秒で死んでいた）。
+      // 核の動作そのものに安全を紐付けて、この矛盾を解く。
+      if (!isEcho) {
+        this.player.inv = Math.max(this.player.inv, clamp(0.45 + killed * 0.025, 0.45, 1.1));
+      }
     } else {
       sfxEmpty();   // 空振りは控えめに。輪を閉じた手応えだけは返す
     }
@@ -2055,27 +2688,27 @@ class Game {
 
   // ---- 進行管理 --------------------------------------------------------
   director(dt) {
-    const t = this.t;
+    const t = this.t, n = this.night;
 
-    if (this.bossPhase === 0 && t >= BOSS1_T) {
-      this.bossPhase = 1;
-      this.spawnBoss(1900, false);
-    }
-    if (this.bossPhase === 2 && t >= FINAL_T) {
-      this.bossPhase = 3;
-      this.spawnBoss(7600, true);
+    if (n.boss && !this.bossSpawned && t >= n.dur * n.boss.at) {
+      this.bossSpawned = true;
+      this.spawnBoss(n.boss.hp * n.baseHp, n.boss.name);
     }
 
-    // 湧きの脈：22秒ごとに一気に押し寄せる
+    // 湧きの脈：20秒強ごとに一気に押し寄せる
     this.surgeT -= dt;
-    if (this.surgeT <= 0) { this.surgeT = rnd(20, 26); this.surge = 4.5; }
+    if (this.surgeT <= 0) { this.surgeT = rnd(19, 25); this.surge = 4.5; }
     if (this.surge > 0) this.surge -= dt;
 
-    let rate = 1.8 + t * 0.045;
-    if (this.surge > 0) rate *= 2.3;
-    if (this.boss.on) rate *= 0.5;
-    rate = Math.min(rate, 30);
-    if (this.swarm.alive > 430) rate *= 0.22;
+    // 「1秒に何体」ではなく「同時に何体いてほしいか」を夜が決める。
+    // 総キル数はほぼ ceil（毎秒の上限）で決まるので、上位の夜ほど厚くしてある。
+    let target = n.dens.base + t * n.dens.growth;
+    if (this.surge > 0) target *= 1.5;
+    if (this.boss.on) target = Math.min(target, n.dens.cap * 0.55);
+    target = Math.min(target, n.dens.cap);
+
+    const ceiling = n.ceil.base + t * n.ceil.growth;
+    const rate = clamp((target - this.swarm.alive) * 0.5, 0, ceiling);
 
     this.spawnAcc += rate * dt;
     while (this.spawnAcc >= 1) {
@@ -2084,34 +2717,24 @@ class Game {
     }
   }
 
-  spawnPlan() {
-    const t = this.t, w = [];
-    w.push({ kind: 'hotsure', w: 10 });
-    if (t > 50) w.push({ kind: 'shitsu', w: 5 + (t - 50) / 55 });
-    if (t > 135) w.push({ kind: 'retsu', w: 3 + (t - 135) / 80 });
-    if (t > 205) w.push({ kind: 'toga', w: 2.4 + (t - 205) / 110 });
-    if (t > 320) w.push({ kind: 'yoroi', w: 2 + (t - 320) / 130 });
-    return w;
-  }
-
   spawnOne() {
     const r = Math.max(this.w, this.h) * 0.56 + rnd(40, 150);
     const a = rnd(TAU);
     const x = this.cam.x + Math.cos(a) * r;
     const y = this.cam.y + Math.sin(a) * r;
-    const kind = pickWeighted(this.spawnPlan()).kind;
-    const elite = this.t > 160 && chance(0.022);
+    const kind = pickWeighted(nightSpawnPlan(this.night, this.t)).kind;
+    const elite = this.t > this.night.dur * 0.45 && chance(0.02);
     this.swarm.spawn(kind, x, y, this.hpMul, elite);
   }
 
-  spawnBoss(hp, final) {
+  spawnBoss(hp, name) {
     const a = rnd(TAU), r = Math.hypot(this.w, this.h) * 0.42;
-    this.boss.spawn(this.cam.x + Math.cos(a) * r, this.cam.y + Math.sin(a) * r, hp, final);
+    this.boss.spawn(this.cam.x + Math.cos(a) * r, this.cam.y + Math.sin(a) * r, hp, true, name);
     sfxBoss();
     fxScreenFlash(0.35, '255,120,90');
     fxShake(16);
     vibrate([40, 60, 90]);
-    this.toast(final ? '織主・終 ─ 夜の縫い目を断て' : '織主 現る', 3.4);
+    this.toast(name + ' ─ 夜の縫い目を断て', 3.4);
   }
 
   onBossDown(boss) {
@@ -2121,15 +2744,13 @@ class Game {
     for (let i = 0; i < 5; i++) fxRing(boss.x, boss.y, boss.r * (0.4 + i * .3), boss.r * (4 + i * 2), .8 + i * .16, '255,190,120', 6 - i);
     fxBurst(boss.x, boss.y, 90, '255,200,140', { spd: 520, life: 1.1, size: 4 });
     vibrate([60, 40, 120]);
-    this.score += boss.final ? 12000 : 3500;
-    for (let i = 0; i < 44; i++) this.motes.spawn(boss.x + rnd(-60, 60), boss.y + rnd(-60, 60), 4);
-    if (boss.final) {
-      this.toast('夜が明ける', 4);
-      this.winT = 1.6;          // 余韻を見せてから結果へ
-    } else {
-      this.bossPhase = 2;
-      this.toast('綻びは、まだ広がる', 3);
-    }
+    this.score += 4000;
+    // 織主は光糸を多く落とす。倒した価値が持ち帰るものに直結する
+    for (let i = 0; i < 30; i++) this.motes.spawn(boss.x + rnd(-70, 70), boss.y + rnd(-70, 70), 3, MOTE_LUMEN);
+    for (let i = 0; i < 6; i++) this.motes.spawn(boss.x + rnd(-50, 50), boss.y + rnd(-50, 50), 1, MOTE_DEW);
+    for (let i = 0; i < 30; i++) this.motes.spawn(boss.x + rnd(-60, 60), boss.y + rnd(-60, 60), 4, MOTE_XP);
+    this.toast('夜が明ける', 4);
+    this.winT = 2.2;                       // 落ちたものを拾う間を置いてから結果へ
   }
 
   // ---- プレイヤー被弾 --------------------------------------------------
@@ -2152,9 +2773,9 @@ class Game {
       const dx = e.x - p.x, dy = e.y - p.y;
       const d = Math.hypot(dx, dy);
       if (d > 110 || d < 0.01) continue;
-      const k = (1 - d / 110) * 420;
+      const k = (1 - d / 110) * 760 * this.stats.flinch;
       e.vx += (dx / d) * k; e.vy += (dy / d) * k;
-      e.frozen = Math.max(e.frozen, 0.18);
+      e.frozen = Math.max(e.frozen, 0.36);   // 押した直後に戻られると隙にならない
     }
 
     sfxHurt();
@@ -2169,13 +2790,26 @@ class Game {
   onKill(e, d, byLoop) {
     this.kills++;
     this.score += d.sc * (e.elite ? 5 : 1);
-    // 光の価値は素の値のまま。収穫倍率は拾う側（collect）で一度だけ掛ける。
+
+    // 光（その場の経験値）── 拾うとレベルが上がる。持ち帰らない
     const n = Math.min(d.xp * (e.elite ? 6 : 1), 6);
-    for (let i = 0; i < n; i++) this.motes.spawn(e.x, e.y, e.elite ? 3 : 1);
+    for (let i = 0; i < n; i++) this.motes.spawn(e.x, e.y, e.elite ? 3 : 1, MOTE_XP);
+
+    // 光糸（持ち帰る通貨）── 毎回は落ちない。落ちたときに価値が伝わるように。
+    // 落ちる率は夜ごと（nights.js）。上位の夜ほど1体あたりは減らし、
+    // 総キル数の差がそのまま8倍の収入差にならないようにしている。
+    if (e.elite) this.motes.spawn(e.x, e.y, 4, MOTE_LUMEN);
+    else if (chance(this.night.lumenRate)) this.motes.spawn(e.x, e.y, 1, MOTE_LUMEN);
+
+    // 霧の露（章素材）── 装備を編むための素材
+    if (this.night.dewRate > 0 && chance(this.night.dewRate)) this.motes.spawn(e.x, e.y, 1, MOTE_DEW);
+
     if (!byLoop) this.gauge = clamp(this.gauge + 0.002, 0, 1);
   }
 
-  collect(v) {
+  collect(v, kind) {
+    if (kind === MOTE_LUMEN) { this.lumen += v; sfxLumen(); return; }
+    if (kind === MOTE_DEW) { this.dew += v; sfxLumen(); return; }
     this.xp += v * this.stats.moteMul;
     if (this.frame % 3 === 0) sfxPick();
     while (this.xp >= this.xpNeed) {
@@ -2197,10 +2831,20 @@ class Game {
   applyCard(card) {
     this.levels[card.id] = (this.levels[card.id] || 0) + 1;
     card.apply(this.stats);
+
+    // 糸を編み直すたび、綻びも1つ繕われる。
+    // 10分の運びに対して回復手段が皆無で、6回被弾した時点で終わっていた
+    // （計測では全モデルが6回被弾＝40〜60秒で死亡）。成長と回復を同じ動作に束ねる。
+    const before = this.player.hp;
+    this.player.hp = Math.min(this.stats.maxHp, this.player.hp + 1);
     if (card.id === 'hp') this.player.hp = this.stats.maxHp;
     if (this.stats.heal) {
       this.player.hp = Math.min(this.stats.maxHp, this.player.hp + this.stats.heal);
       this.stats.heal = 0;
+    }
+    if (this.player.hp > before) {
+      fxRing(this.player.x, this.player.y, 10, 130, .55, '255,120,150', 3);
+      fxBurst(this.player.x, this.player.y, 14, '255,140,170', { spd: 150, life: .6, size: 2.4 });
     }
     this.thread.maxPts = this.stats.threadPts;
     this.state = STATE.RUN;
@@ -2247,16 +2891,14 @@ class Game {
     if (this.state === STATE.OVER) return;
     this.state = STATE.OVER;
     musicStop();
-    const survived = Math.min(this.t, RUN_TIME);
-    const total = Math.round(this.score + survived * 6 + this.maxChain * 260 + (win ? 20000 : 0));
-    const best = store('best') || 0;
-    const isBest = total > best;
-    if (isBest) store('best', total);
+    const survived = Math.min(this.t, this.night.dur);
+    const total = Math.round(this.score + survived * 6 + this.maxChain * 260 + (win ? 6000 : 0));
     this.result = {
-      win, score: total, kills: this.kills, time: survived,
+      win, nightId: this.night.id, nightName: this.night.name,
+      score: total, kills: this.kills, time: survived, dur: this.night.dur,
       maxChain: this.maxChain, bestLoop: this.bestLoop, lv: this.lv,
-      stitches: this.stitches, isBest, best: Math.max(best, total),
-      style: this.style.n,
+      stitches: this.stitches,
+      lumen: this.lumen, dew: this.dew,     // 拾った分。勝敗によらず持ち帰る
     };
     fxScreenFlash(win ? 0.8 : 0.4, win ? '255,230,180' : '255,60,90');
     this.onEnd?.(this.result);
@@ -2291,6 +2933,7 @@ class Game {
 
     this.drawWeave(ctx, view);
     this.drawBurns(ctx);
+    this.drawClosePreview(ctx);
     this.motes.draw(ctx, view);
     this.swarm.draw(ctx, view, ox, oy, this.dpr);
     this.boss.draw(ctx);
@@ -2330,6 +2973,55 @@ class Game {
         ctx.fillStyle = `rgba(140,120,255,${a})`;
         ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
       }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * 閉じかけの輪を先読みして描く。
+   * 「針を自分の糸に近づけると何かが起きる」を、文章ではなく画面で教える部分。
+   * 近づくほど濃くなるので、届かない大回りをしている人にも距離感が伝わる。
+   */
+  drawClosePreview(ctx) {
+    if (this.state !== STATE.RUN) return;
+    const pv = this.thread.previewClose();
+    this._preview = pv;
+    if (!pv) return;
+
+    const f = pv.flat;
+    const a = pv.near;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 囲われる領域。遠いうちは塗らない（見えないものに塗り潰しの負荷は払わない）
+    if (a > 0.12) {
+      ctx.beginPath();
+      ctx.moveTo(f[0], f[1]);
+      for (let i = 2; i < f.length; i += 2) ctx.lineTo(f[i], f[i + 1]);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(255,214,140,${a * 0.06})`;
+      ctx.fill();
+    }
+
+    // 閉じ口（針 → 触れる先）
+    ctx.setLineDash([5, 7]);
+    ctx.lineDashOffset = -this.t * 42;
+    ctx.lineWidth = 1 + a * 1.6;
+    ctx.strokeStyle = `rgba(255,228,170,${0.18 + a * 0.62})`;
+    ctx.beginPath();
+    ctx.moveTo(this.thread.hx, this.thread.hy);
+    ctx.lineTo(pv.x, pv.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 触れる寸前だけ、閉じ口に光点を置く
+    if (a > 0.55) {
+      const r = 4 + a * 5;
+      const g = ctx.createRadialGradient(pv.x, pv.y, 0, pv.x, pv.y, r * 2.4);
+      g.addColorStop(0, `rgba(255,255,235,${a})`);
+      g.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(pv.x, pv.y, r * 2.4, 0, TAU); ctx.fill();
     }
     ctx.restore();
   }
@@ -2444,6 +3136,7 @@ class Game {
 
 
 
+
 const byId = id => document.getElementById(id);
 
 const el = {};
@@ -2451,39 +3144,26 @@ let toastT = 0;
 let heartN = 0;
 
 function initUI() {
-  for (const id of ['hud', 'hearts', 'clock', 'score', 'chain', 'unravel', 'toast',
+  for (const id of ['hud', 'hearts', 'clock', 'purse', 'hudLumen', 'hudDew', 'chain', 'unravel', 'toast',
     'lvnum', 'killnum', 'lvfill', 'title', 'help', 'levelup', 'cards', 'luTitle',
-    'result', 'rank', 'verdict', 'flavor', 'stats', 'paused', 'styles', 'bestLine']) el[id] = byId(id);
-  renderStyles();
-  refreshBest();
+    'result', 'rank', 'verdict', 'rNight', 'loot', 'unlockBox', 'stats', 'paused',
+    'base', 'basePurse', 'baseSub', 'nightsel', 'nsPurse', 'nightList',
+    'loom', 'loomPurse', 'loomBody', 'loomHint', 'gear', 'gearPurse', 'gearBody',
+    'bestLine']) el[id] = byId(id);
 }
 
-function show(name, v) {
-  el[name]?.classList.toggle('hide', !v);
+function show(name, v) { el[name]?.classList.toggle('hide', !v); }
+
+// --- 通貨表示 --------------------------------------------------------------
+function purseHTML(save) {
+  return `<div class="coin lum">${fmtNum(save.lumen)}<i>光糸</i></div>
+          <div class="coin core">${save.cores}<i>綻び核</i></div>
+          <div class="coin dew">${save.dew}<i>霧の露</i></div>`;
 }
-
-// --- 型セレクト ------------------------------------------------------------
-let styleId = 'swift';
-const getStyle = () => styleId;
-
-function renderStyles() {
-  el.styles.innerHTML = '';
-  for (const s of STYLES) {
-    const d = document.createElement('div');
-    d.className = 'style on' + (s.id === styleId ? ' sel' : '');
-    d.innerHTML = `<div class="g">${s.g}</div><div class="n">${s.n}</div><div class="d">${s.d}</div>`;
-    d.addEventListener('click', () => {
-      styleId = s.id; sfxUI();
-      [...el.styles.children].forEach(c => c.classList.remove('sel'));
-      d.classList.add('sel');
-    });
-    el.styles.appendChild(d);
+function paintPurse(save) {
+  for (const k of ['basePurse', 'nsPurse', 'loomPurse', 'gearPurse']) {
+    if (el[k]) el[k].innerHTML = purseHTML(save);
   }
-}
-
-function refreshBest() {
-  const b = store('best') || 0;
-  el.bestLine.textContent = b ? `最高記録 ${fmtNum(b)}` : '';
 }
 
 // --- HUD -------------------------------------------------------------------
@@ -2497,25 +3177,32 @@ function buildHearts(n) {
   heartN = n;
 }
 
-let lastChain = 0, lastScore = -1, lastKills = -1, lastLv = -1, lastSec = -1;
+let lastLumen = -1, lastDew = -1, lastKills = -1, lastLv = -1, lastSec = -1, lastChain = 0;
 
 function updateHUD(G, dt) {
   if (heartN !== G.stats.maxHp) buildHearts(G.stats.maxHp);
   const hs = el.hearts.children;
   for (let i = 0; i < hs.length; i++) hs[i].classList.toggle('off', i >= G.player.hp);
 
-  const sec = Math.min(G.t, RUN_TIME) | 0;
-  if (sec !== lastSec) {
-    lastSec = sec;
-    el.clock.firstChild.textContent = fmtTime(sec);
+  // 残り時間。夜には終わりがあることを常に見せる
+  const left = Math.ceil(G.timeLeft);
+  if (left !== lastSec) {
+    lastSec = left;
+    el.clock.firstChild.textContent = fmtTime(left);
+    el.clock.classList.toggle('urgent', left <= 20);
   }
-  const sc = Math.round(G.score);
-  if (sc !== lastScore) { lastScore = sc; el.score.firstChild.textContent = fmtNum(sc); }
+
+  // 光糸は「持ち帰るもの」なので、得点ではなくこれを常時見せる
+  if (G.lumen !== lastLumen) { lastLumen = G.lumen; el.hudLumen.textContent = fmtNum(G.lumen); }
+  if (G.dew !== lastDew) {
+    lastDew = G.dew;
+    el.hudDew.textContent = `露 ${G.dew}`;
+    el.hudDew.classList.toggle('hide', G.dew === 0);
+  }
   if (G.kills !== lastKills) { lastKills = G.kills; el.killnum.textContent = `${G.kills} 縫`; }
   if (G.lv !== lastLv) { lastLv = G.lv; el.lvnum.textContent = G.lv; }
   el.lvfill.style.width = clamp(G.xp / G.xpNeed, 0, 1) * 100 + '%';
 
-  // 連鎖
   if (G.chain > lastChain && G.chain >= 2) {
     el.chain.innerHTML = `${G.chain}<b>連鎖</b>`;
     el.chain.classList.remove('pop');
@@ -2524,16 +3211,12 @@ function updateHUD(G, dt) {
   }
   lastChain = G.chain;
 
-  // 解
   const deg = clamp(G.gauge, 0, 1) * 360;
   el.unravel.style.background =
     `conic-gradient(from -90deg, #ffd98a 0deg ${deg}deg, rgba(255,255,255,.08) ${deg}deg 360deg)`;
   el.unravel.classList.toggle('ready', G.gauge >= 1);
 
-  if (toastT > 0) {
-    toastT -= dt;
-    if (toastT <= 0) el.toast.classList.remove('show');
-  }
+  if (toastT > 0) { toastT -= dt; if (toastT <= 0) el.toast.classList.remove('show'); }
 }
 
 function toast(msg, t = 2.4) {
@@ -2543,10 +3226,153 @@ function toast(msg, t = 2.4) {
 }
 
 function resetHUD() {
-  lastChain = 0; lastScore = -1; lastKills = -1; lastLv = -1; lastSec = -1;
+  lastLumen = -1; lastDew = -1; lastKills = -1; lastLv = -1; lastSec = -1; lastChain = 0;
   el.chain.classList.remove('pop');
   el.toast.classList.remove('show');
+  el.hudDew.classList.add('hide');
   heartN = 0;
+}
+
+function setBestLine(save) {
+  const cleared = Object.values(save.nights).filter(n => n.cleared).length;
+  el.bestLine.textContent = cleared ? `突破した夜 ${cleared} / ${NIGHTS.length}` : '';
+}
+
+// --- 拠点 ------------------------------------------------------------------
+function renderBase(save) {
+  paintPurse(save);
+  const cleared = Object.values(save.nights).filter(n => n.cleared).length;
+  el.baseSub.textContent = `突破 ${cleared} / ${NIGHTS.length}`;
+  const next = NIGHTS.find(n => n.id === save.unlocked) || NIGHTS[NIGHTS.length - 1];
+  byId('goNightsSub').textContent = `次は「${next.name}」`;
+
+  const bought = LOOM.reduce((a, n) => a + loomRank(save, n.id), 0);
+  const total = LOOM.reduce((a, n) => a + n.max, 0);
+  const affordable = LOOM.some(n => canBuy(save, n).ok);
+  byId('goLoomSub').innerHTML = `鍛えた数 ${bought} / ${total}` +
+    (affordable ? ' <span style="color:#ffd98a">・いま開ける</span>' : '');
+
+  byId('goGearSub').textContent = SLOTS.map(s => gearItem(s.key, save.gear[s.key]).n).join(' ・ ');
+}
+
+// --- 夜選択 ----------------------------------------------------------------
+function renderNights(save, onPick) {
+  paintPurse(save);
+  el.nightList.innerHTML = '';
+  for (const n of NIGHTS) {
+    const rec = save.nights[n.id] || {};
+    const locked = n.id > save.unlocked;
+    const d = document.createElement('div');
+    d.className = 'night' + (locked ? ' locked' : '') + (n.boss ? ' boss' : '') + (locked ? '' : ' on');
+    d.innerHTML =
+      `<div class="no">${n.id}</div>
+       <div class="tx">
+         <div class="tt">${n.name}${n.boss ? ' <span style="color:#ff9d4d;font-size:11px">織主</span>' : ''}</div>
+         <div class="dd">${locked ? '前の夜を突破すると開く' : n.sub}</div>
+       </div>
+       <div class="meta">${fmtTime(n.dur)}<br>${rec.cleared
+         ? `<span class="ok">踏破 +${n.reward.clear}</span>`
+         : '未突破'}</div>`;
+    if (!locked) d.addEventListener('click', () => { sfxSelect(); onPick(n); });
+    el.nightList.appendChild(d);
+  }
+}
+
+// --- 織機 ------------------------------------------------------------------
+const BRANCH_DESC = {
+  '糸': '何が可能になるか ── 長さと閉じ方',
+  '針': '生き延びる力 ── 耐久と身のこなし',
+  '環': '上手さへの見返り ── 面積・連鎖・実り',
+};
+
+function renderLoom(save, onBuy) {
+  paintPurse(save);
+  el.loomBody.innerHTML = '';
+  for (const br of ['糸', '針', '環']) {
+    const wrap = document.createElement('div');
+    wrap.className = 'branch';
+    wrap.innerHTML = `<h3>${br}</h3><div class="bd">${BRANCH_DESC[br]}</div><div class="nodes"></div>`;
+    const list = wrap.querySelector('.nodes');
+
+    for (const node of LOOM.filter(n => n.br === br)) {
+      const r = loomRank(save, node.id);
+      const c = canBuy(save, node);
+      const d = document.createElement('div');
+      d.className = 'node';
+
+      let pips = '';
+      for (let i = 0; i < node.max; i++) {
+        const locked = TIER_OF_RANK[i] > unlockedTier(save);
+        pips += `<div class="pip ${i < r ? 'on' : locked ? 'tier' : ''}"></div>`;
+      }
+
+      let btn;
+      if (c.ok) btn = `<button class="buy on" data-id="${node.id}">${c.cost}</button>`;
+      else if (c.why === 'max') btn = `<button class="buy max">極</button>`;
+      else if (c.why === 'locked') btn = `<button class="buy lock">核 ${c.needCores}</button>`;
+      else btn = `<button class="buy no">${c.cost}</button>`;
+
+      d.innerHTML =
+        `<div class="g">${node.g}</div>
+         <div class="tx">
+           <div class="tt">${node.n} <span style="color:#5d5786;font-size:11px">${r}/${node.max}</span></div>
+           <div class="dd">${node.d(r + 1 > node.max ? node.max : r + 1)}</div>
+           <div class="pips">${pips}</div>
+         </div>${btn}`;
+
+      const b = d.querySelector('.buy.on');
+      if (b) b.addEventListener('click', () => onBuy(node));
+      list.appendChild(d);
+    }
+    el.loomBody.appendChild(wrap);
+  }
+
+  const tier = unlockedTier(save);
+  const nextTier = TIER_CORES[tier + 1];
+  el.loomHint.textContent = nextTier === undefined
+    ? 'すべての段が開いている'
+    : `綻び核 ${nextTier} 個で、次の段が開く（いま ${save.cores} 個）`;
+}
+
+// --- 装備 ------------------------------------------------------------------
+function renderGear(save, onEquip, onCraft) {
+  paintPurse(save);
+  el.gearBody.innerHTML = '';
+  for (const slot of SLOTS) {
+    const wrap = document.createElement('div');
+    wrap.className = 'slot';
+    wrap.innerHTML = `<h3>${slot.n}</h3><div class="sd">${slot.d}</div><div class="gears"></div>`;
+    const list = wrap.querySelector('.gears');
+
+    for (const item of GEAR[slot.key]) {
+      const owned = gearOwned(save, slot.key, item.id);
+      const equipped = save.gear[slot.key] === item.id;
+      const cc = owned ? null : canCraft(save, slot.key, item);
+      const d = document.createElement('div');
+      d.className = 'gear' + (equipped ? ' equipped' : '') +
+        (!owned && cc && !cc.ok && cc.why === 'night' ? ' locked' : '') +
+        (!owned ? ' craft' : '') + ' on';
+
+      let st;
+      if (equipped) st = '装備中';
+      else if (owned) st = '外す→着ける';
+      else if (cc.why === 'night') st = `夜${cc.night}を突破`;
+      else st = `露 ${item.cost}`;
+
+      d.innerHTML =
+        `<div class="g">${item.g}</div>
+         <div class="tx"><div class="tt">${item.n}</div><div class="dd">${item.d}</div></div>
+         <div class="st">${st}</div>`;
+
+      d.addEventListener('click', () => {
+        if (owned) { if (!equipped) { sfxSelect(); onEquip(slot.key, item.id); } }
+        else if (cc.ok) { sfxSelect(); onCraft(slot.key, item); }
+        else sfxUI();
+      });
+      list.appendChild(d);
+    }
+    el.gearBody.appendChild(wrap);
+  }
 }
 
 // --- レベルアップ -----------------------------------------------------------
@@ -2571,93 +3397,129 @@ function showCards(cards, levels, onPick) {
 }
 
 // --- 結果 -------------------------------------------------------------------
-const WIN_FLAVOR = [
-  '獣の主は解け、夜は縫い合わされた。\n朝が、少しだけ早く来る。',
-  '最後のひと針が、闇の縫い目を断った。\n糸は、まだ光っている。',
-];
-const LOSE_FLAVOR = [
-  '指先の光が消える。\n夜は、まだ綻んだままだ。',
-  '糸は切れた。\nだが、縫い方は覚えた。',
-  '闇に呑まれる。\n次はもっと大きく囲め。',
-];
+const WIN_FLAVOR = ['夜 明 け', '突 破'];
+const LOSE_FLAVOR = ['綻 び', '力 尽 き'];
 
-function rankOf(s) {
-  if (s >= 110000) return ['S+', '#fff'];
-  if (s >= 70000) return ['S', '#ffd98a'];
-  if (s >= 46000) return ['A', '#ffd98a'];
-  if (s >= 29000) return ['B', '#c08cff'];
-  if (s >= 15000) return ['C', '#7df0ff'];
-  return ['D', '#8a83ad'];
+function rankOf(score, dur) {
+  const perMin = score / Math.max(dur / 60, 0.5);
+  if (perMin >= 9000) return 'S+';
+  if (perMin >= 6500) return 'S';
+  if (perMin >= 4500) return 'A';
+  if (perMin >= 3000) return 'B';
+  if (perMin >= 1600) return 'C';
+  return 'D';
 }
 
-function showResult(r) {
-  const [rk] = rankOf(r.score);
-  el.rank.textContent = rk;
-  el.verdict.textContent = r.win ? '夜 明 け' : '綻 び';
-  el.flavor.textContent = (r.win ? pick(WIN_FLAVOR) : pick(LOSE_FLAVOR));
+function showResult(r, gained) {
+  el.rank.textContent = rankOf(r.score, r.dur);
+  el.verdict.textContent = r.win ? pick(WIN_FLAVOR) : pick(LOSE_FLAVOR);
+  el.rNight.textContent = `夜 ${r.nightId} ・ ${r.nightName}`;
 
-  const rows = [
-    ['縫い落とした獣', fmtNum(r.kills), false],
-    ['最大連鎖', `${r.maxChain} 連`, false],
-    ['一縫の最多', `${r.bestLoop} 体`, false],
-    ['閉じた輪', fmtNum(r.stitches), false],
-    ['到達', `LV ${r.lv} ・ ${r.style}`, false],
-    ['生存', fmtTime(r.time), false],
-    ['得点', fmtNum(r.score), true],
+  const rows = [];
+  rows.push(`<div class="lrow lum"><span>拾った光糸</span><b>+${fmtNum(gained.lumen)}</b></div>`);
+  if (gained.dew > 0) rows.push(`<div class="lrow dew"><span>霧の露</span><b>+${gained.dew}</b></div>`);
+  rows.push(`<div class="lrow lum${r.win ? '' : ' miss'}"><span>踏破の報い</span><b>${r.win ? '+' + fmtNum(gained.clear) : '—'}</b></div>`);
+  if (gained.cores > 0) {
+    rows.push(`<div class="lrow core"><span>綻び核</span><b>+${gained.cores}</b></div>`);
+  } else if (r.nightId === 5) {
+    rows.push(`<div class="lrow core miss"><span>綻び核</span><b>—</b></div>`);
+  }
+  el.loot.innerHTML = rows.join('');
+
+  el.unlockBox.innerHTML = gained.unlocked
+    ? `<div class="unlock">夜 ${gained.unlocked} が開いた</div>`
+    : (r.win ? '' : `<div class="unlock" style="color:var(--dim);border-color:#ffffff18;background:#ffffff06">拾ったものは持ち帰った。もう一度挑める</div>`);
+
+  const st = [
+    ['縫い落とした獣', fmtNum(r.kills)],
+    ['一縫の最多', `${r.bestLoop} 体`],
+    ['最大連鎖', `${r.maxChain} 連`],
+    ['閉じた輪', fmtNum(r.stitches)],
+    ['到達', `LV ${r.lv}`],
+    ['生存', fmtTime(r.time)],
+    ['得点', fmtNum(r.score)],
   ];
-  el.stats.innerHTML = rows.map(([k, v, hi]) =>
-    `<div class="stat${hi ? ' hi' : ''}"><span>${k}</span><b>${v}${hi && r.isBest ? '<span class="newbest">最高</span>' : ''}</b></div>`
-  ).join('');
+  el.stats.innerHTML = st.map(([k, v]) =>
+    `<div class="stat"><span>${k}</span><b>${v}</b></div>`).join('');
   show('result', true);
-  refreshBest();
 }
 
 /* ===== src/main.js ===== */
-// 起動と束ね役。
+// 起動と束ね役。画面遷移とセーブの持ち回りはここに集約する。
 
 
 
 
 
-const cv = document.getElementById('stage');
+
+const cv = byId('stage');
 const game = new Game(cv);
+
+let save = loadSave();
+let scene = 'title';          // title | help | base | nightsel | loom | gear | play | result
+let currentNight = null;
 
 initUI();
 inputInit(window);
 
-// --- 画面遷移 --------------------------------------------------------------
-let scene = 'title';   // title | help | play
-
-function toTitle() {
-  scene = 'title';
-  musicStop();
-  game.enterTitle();
-  show('title', true); show('help', false); show('result', false);
-  show('levelup', false); show('paused', false); show('hud', false);
-  refreshBest();
+const SCREENS = ['title', 'help', 'base', 'nightsel', 'loom', 'gear', 'result', 'paused', 'levelup'];
+function only(name) {
+  for (const s of SCREENS) show(s, s === name);
+  show('hud', name === null);
 }
 
-function startRun() {
+// --- 画面 ------------------------------------------------------------------
+function toTitle() {
+  scene = 'title'; musicStop(); game.enterTitle();
+  only('title'); setBestLine(save);
+}
+function toBase() {
+  scene = 'base'; musicStop(); game.enterTitle();
+  renderBase(save); only('base');
+}
+function toNights() {
+  scene = 'nightsel';
+  renderNights(save, n => startNight(n.id));
+  only('nightsel');
+}
+function toLoom() {
+  scene = 'loom';
+  const rerender = () => renderLoom(save, node => {
+    if (buyNode(save, node)) { sfxUI(); rerender(); }
+  });
+  rerender();
+  only('loom');
+}
+function toGear() {
+  scene = 'gear';
+  const rerender = () => renderGear(save,
+    (slot, id) => { equipGear(save, slot, id); rerender(); },
+    (slot, item) => { craftGear(save, slot, item); rerender(); });
+  rerender();
+  only('gear');
+}
+
+function startNight(id) {
   audioResume();
+  currentNight = id;
   scene = 'play';
-  show('title', false); show('help', false); show('result', false);
-  show('levelup', false); show('paused', false); show('hud', true);
+  only(null);
   resetHUD();
   inputReset();
-  game.start(getStyle());
+  game.start(id, save);
   buildHearts(game.stats.maxHp);
 }
 
+// --- ゲームからのフック ------------------------------------------------------
 game.onLevelUp = cards => {
-  showCards(cards, game.levels, card => {
-    show('levelup', false);
-    game.applyCard(card);
-  });
+  showCards(cards, game.levels, card => { show('levelup', false); game.applyCard(card); });
 };
 
 game.onEnd = result => {
+  scene = 'result';
   show('hud', false);
-  setTimeout(() => showResult(result), 620);
+  const gained = settle(save, game.night, result);
+  setTimeout(() => { showResult(result, gained); }, 620);
 };
 
 game.onToast = (m, t) => toast(m, t);
@@ -2665,16 +3527,34 @@ game.onToast = (m, t) => toast(m, t);
 input.onTap = () => { if (scene === 'play' && game.running) game.tryUnravel(); };
 
 // --- ボタン ----------------------------------------------------------------
-byId('startBtn').addEventListener('click', () => { sfxUI(); startRun(); });
-byId('howBtn').addEventListener('click', () => { audioResume(); sfxUI(); show('title', false); show('help', true); });
-byId('helpBack').addEventListener('click', () => { sfxUI(); show('help', false); show('title', true); });
-byId('againBtn').addEventListener('click', () => { sfxUI(); startRun(); });
-byId('titleBtn').addEventListener('click', () => { sfxUI(); toTitle(); });
-byId('resumeBtn').addEventListener('click', () => { sfxUI(); show('paused', false); game.pause(false); });
+byId('startBtn').addEventListener('click', () => { audioResume(); sfxUI(); toBase(); });
+byId('howBtn').addEventListener('click', () => { audioResume(); sfxUI(); scene = 'help'; only('help'); });
+byId('helpBack').addEventListener('click', () => { sfxUI(); toTitle(); });
+byId('baseHelp').addEventListener('click', () => { sfxUI(); scene = 'help'; only('help'); });
+byId('baseTitle').addEventListener('click', () => { sfxUI(); toTitle(); });
+
+byId('goNights').addEventListener('click', () => { sfxUI(); toNights(); });
+byId('goLoom').addEventListener('click', () => { sfxUI(); toLoom(); });
+byId('goGear').addEventListener('click', () => { sfxUI(); toGear(); });
+byId('nsBack').addEventListener('click', () => { sfxUI(); toBase(); });
+byId('loomBack').addEventListener('click', () => { sfxUI(); toBase(); });
+byId('gearBack').addEventListener('click', () => { sfxUI(); toBase(); });
+
+byId('toBaseBtn').addEventListener('click', () => { sfxUI(); toBase(); });
+byId('againBtn').addEventListener('click', () => { sfxUI(); startNight(currentNight); });
+
+byId('resumeBtn').addEventListener('click', () => { sfxUI(); show('paused', false); show('hud', true); game.pause(false); });
 byId('quitBtn').addEventListener('click', () => { sfxUI(); show('paused', false); game.finish(false); });
 byId('pause').addEventListener('click', () => {
   if (scene !== 'play' || !game.running) return;
   sfxUI(); game.pause(true); show('paused', true); inputReset();
+});
+
+let wipeT = 0;
+byId('wipeBtn').addEventListener('pointerdown', () => { wipeT = Date.now(); });
+byId('wipeBtn').addEventListener('click', () => {
+  if (Date.now() - wipeT < 900) { toast('長押しで初期化', 2); return; }
+  save = resetSave(); sfxUI(); toBase();
 });
 
 const muteBtn = byId('muteBtn');
@@ -2716,11 +3596,13 @@ function frame(now) {
   }
 }
 
-game.enterTitle();
+toTitle();
 requestAnimationFrame(frame);
 
 window.__G = game;          // 調整・計測用の窓口
 window.__input = input;
+window.__save = () => save;
+window.__meta = { loadSave, settle, buyNode, canBuy, loomRank, LOOM };  // 計測用
 
 // 何かの拍子に音が止まった端末向けの保険
 window.addEventListener('pointerdown', () => audioResume(), { once: true });

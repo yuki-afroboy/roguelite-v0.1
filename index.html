@@ -6,12 +6,13 @@
 <meta name="theme-color" content="#07060f">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="description" content="縫夜 -NUIYO- 指でなぞった光の糸で夜を縫う、10分完結の2Dローグライト。">
+<meta name="description" content="縫夜 -NUIYO- 指でなぞった光の糸で夜を縫う、片手で遊べる2Dローグライト。">
 <title>縫夜 -NUIYO-</title>
 <style>
 :root{
   --void:#07060f; --void2:#0d0b1c; --ink:#161233;
   --thread:#ffd98a; --thread2:#7df0ff; --blood:#ff4d6d;
+  --dew:#bfe4ff; --core:#c08cff;
   --paper:#e8e3f5; --dim:#8a83ad;
   --safe-b: env(safe-area-inset-bottom, 0px);
   --safe-t: env(safe-area-inset-top, 0px);
@@ -29,16 +30,18 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 #hud{z-index:12}
 #hud .top{position:absolute;top:calc(var(--safe-t) + 10px);left:0;right:0;
   display:flex;align-items:flex-start;justify-content:space-between;padding:0 14px}
-#hearts{display:flex;gap:5px;filter:drop-shadow(0 0 6px #ff4d6d66)}
+#hearts{display:flex;gap:5px;flex-wrap:wrap;max-width:38%;filter:drop-shadow(0 0 6px #ff4d6d66)}
 .heart{width:13px;height:13px;border-radius:50%;background:var(--blood);
   box-shadow:0 0 8px #ff4d6d;transition:.2s}
 .heart.off{background:#2a2540;box-shadow:none;transform:scale(.7)}
 #clock{font-variant-numeric:tabular-nums;font-size:19px;letter-spacing:.06em;
   font-weight:700;text-align:center;text-shadow:0 0 12px #7df0ff55}
-#clock small{display:block;font-size:9px;letter-spacing:.35em;color:var(--dim);font-weight:400;margin-top:1px}
-#score{font-variant-numeric:tabular-nums;font-size:15px;font-weight:700;text-align:right;color:var(--thread);
-  text-shadow:0 0 10px #ffd98a55}
-#score small{display:block;font-size:9px;letter-spacing:.2em;color:var(--dim);font-weight:400}
+#clock small{display:block;font-size:9px;letter-spacing:.28em;color:var(--dim);font-weight:400;margin-top:1px}
+#clock.urgent{color:#ff8a9c;text-shadow:0 0 14px #ff4d6d88}
+#purse{text-align:right;font-variant-numeric:tabular-nums}
+#purse b{font-size:16px;font-weight:800;color:var(--thread);text-shadow:0 0 10px #ffd98a66}
+#purse small{display:block;font-size:9px;letter-spacing:.2em;color:var(--dim);font-weight:400}
+#purse .dw{font-size:11px;color:var(--dew);margin-top:2px;display:block}
 
 #chain{position:absolute;top:22%;left:50%;transform:translate(-50%,-50%) scale(.4);
   font-size:52px;font-weight:900;opacity:0;letter-spacing:-.02em;
@@ -51,7 +54,7 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
  100%{opacity:0;transform:translate(-50%,-56%) scale(1)}}
 
 #lvwrap{position:absolute;left:0;right:0;bottom:calc(var(--safe-b) + 8px);padding:0 14px}
-#lvbar{height:4px;background:#1a1633;border-radius:99px;overflow:hidden;position:relative}
+#lvbar{height:4px;background:#1a1633;border-radius:99px;overflow:hidden}
 #lvfill{height:100%;width:0%;border-radius:99px;
   background:linear-gradient(90deg,#7df0ff,#ffd98a);box-shadow:0 0 12px #7df0ffaa;transition:width .12s linear}
 #lvtxt{display:flex;justify-content:space-between;font-size:10px;letter-spacing:.18em;color:var(--dim);margin-bottom:5px}
@@ -70,15 +73,17 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
   background:#0a0818cc;padding:7px 16px;border-radius:99px;border:1px solid #ffffff10;white-space:nowrap}
 #toast.show{opacity:1}
 
-#pause{position:absolute;top:calc(var(--safe-t) + 46px);left:50%;transform:translateX(-50%);
+#pause{position:absolute;top:calc(var(--safe-t) + 48px);left:50%;transform:translateX(-50%);
   width:66px;height:30px;background:none;border:none;color:#6b6590;font:inherit;
   font-size:13px;letter-spacing:.2em;cursor:pointer;opacity:.5}
 
-/* ---------- 汎用スクリーン ---------- */
+/* ---------- 画面共通 ---------- */
 .screen{position:fixed;inset:0;z-index:20;display:flex;flex-direction:column;
   align-items:center;justify-content:center;padding:24px;
-  background:radial-gradient(125% 85% at 50% 8%,rgba(23,18,54,.72) 0%,rgba(7,6,15,.88) 60%);
-  animation:fade .45s ease both}
+  background:radial-gradient(125% 85% at 50% 8%,rgba(23,18,54,.74) 0%,rgba(7,6,15,.9) 60%);
+  animation:fade .4s ease both}
+.screen.scroll{justify-content:flex-start;overflow-y:auto;overscroll-behavior:contain;
+  padding:calc(var(--safe-t) + 16px) 16px calc(var(--safe-b) + 24px);-webkit-overflow-scrolling:touch}
 @keyframes fade{from{opacity:0}to{opacity:1}}
 .brand{text-align:center;margin-bottom:6px}
 .brand h1{font-size:clamp(46px,17vw,84px);font-weight:900;letter-spacing:.14em;line-height:1;
@@ -96,17 +101,103 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 .btn:active{transform:scale(.95)}
 .btn.ghost{background:transparent;color:var(--dim);box-shadow:0 0 0 1px #ffffff18 inset;
   font-size:11px;letter-spacing:.2em;padding:11px 26px;font-weight:600}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
 
-/* 型セレクト */
-.styles{display:flex;gap:9px;margin:26px 0 22px;width:100%;max-width:420px}
-.style{flex:1;pointer-events:auto;cursor:pointer;background:#ffffff06;border:1px solid #ffffff14;
-  border-radius:14px;padding:13px 6px;text-align:center;transition:.18s;position:relative;overflow:hidden}
-.style .g{font-size:27px;font-weight:900;color:var(--paper);line-height:1.1}
-.style .n{font-size:10px;letter-spacing:.14em;color:var(--dim);margin-top:5px}
-.style .d{font-size:9.5px;color:#6b6590;margin-top:6px;line-height:1.55}
-.style.sel{background:#ffd98a12;border-color:#ffd98a88;box-shadow:0 0 22px #ffd98a2e}
-.style.sel .g{color:var(--thread);text-shadow:0 0 16px #ffd98a}
-.style.sel .n{color:var(--thread)}
+/* 見出しバー（拠点系の画面） */
+.bar{width:100%;max-width:460px;display:flex;align-items:center;justify-content:space-between;
+  margin:0 auto 14px;gap:10px}
+.bar h2{font-size:17px;font-weight:800;letter-spacing:.22em}
+.bar .back{pointer-events:auto;cursor:pointer;background:none;border:none;font:inherit;
+  color:var(--dim);font-size:12px;letter-spacing:.14em;padding:8px 4px}
+
+/* 通貨チップ */
+.purse{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-bottom:18px}
+.coin{display:flex;align-items:center;gap:6px;background:#ffffff08;border:1px solid #ffffff14;
+  border-radius:99px;padding:6px 13px;font-size:13px;font-variant-numeric:tabular-nums;font-weight:700}
+.coin i{font-style:normal;font-size:11px;letter-spacing:.1em;font-weight:400;color:var(--dim)}
+.coin.lum{color:var(--thread);border-color:#ffd98a33}
+.coin.core{color:var(--core);border-color:#c08cff33}
+.coin.dew{color:var(--dew);border-color:#bfe4ff33}
+
+/* 拠点のメニュー */
+.menu{display:flex;flex-direction:column;gap:11px;width:100%;max-width:400px}
+.mitem{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:15px;
+  background:linear-gradient(100deg,#14102b,#0c0a1c);border:1px solid #ffffff16;
+  border-radius:16px;padding:17px 18px;transition:transform .12s}
+.mitem:active{transform:scale(.98)}
+.mitem .g{flex:0 0 46px;height:46px;border-radius:13px;display:grid;place-items:center;
+  font-size:23px;font-weight:900;background:#ffffff08;color:var(--thread);box-shadow:0 0 0 1px #ffd98a2e inset}
+.mitem .tt{font-size:16px;font-weight:800;letter-spacing:.1em}
+.mitem .dd{font-size:11.5px;color:var(--dim);margin-top:3px}
+.mitem.prime{background:linear-gradient(100deg,#2c2010,#0c0a1c);border-color:#ffd98a44}
+.mitem.prime .tt{color:var(--thread)}
+
+/* 夜のリスト */
+.nights{display:flex;flex-direction:column;gap:9px;width:100%;max-width:460px}
+.night{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:14px;
+  background:linear-gradient(100deg,#14102b,#0c0a1c);border:1px solid #ffffff16;
+  border-radius:14px;padding:13px 15px;transition:transform .12s;position:relative}
+.night:active{transform:scale(.98)}
+.night .no{flex:0 0 38px;height:38px;border-radius:50%;display:grid;place-items:center;
+  font-size:15px;font-weight:900;background:#ffffff08;color:var(--thread2);
+  font-variant-numeric:tabular-nums;box-shadow:0 0 0 1px #7df0ff2e inset}
+.night .tx{flex:1;min-width:0}
+.night .tt{font-size:15px;font-weight:800;letter-spacing:.08em}
+.night .dd{font-size:11px;color:var(--dim);margin-top:3px}
+.night .meta{flex:0 0 auto;text-align:right;font-size:10.5px;color:var(--dim);
+  font-variant-numeric:tabular-nums;line-height:1.7}
+.night .meta .ok{color:var(--thread);font-weight:700}
+.night.locked{opacity:.4;pointer-events:none}
+.night.locked .no{color:var(--dim);box-shadow:0 0 0 1px #ffffff16 inset}
+.night.boss{border-color:#ff9d4d44}
+.night.boss .no{color:#ff9d4d;box-shadow:0 0 0 1px #ff9d4d3a inset}
+
+/* 織機 */
+.branch{width:100%;max-width:460px;margin-bottom:20px}
+.branch h3{font-size:12px;letter-spacing:.34em;color:var(--thread);margin:0 0 4px 2px;text-indent:.34em}
+.branch .bd{font-size:10.5px;color:#5d5786;margin:0 0 10px 2px;letter-spacing:.06em}
+.nodes{display:flex;flex-direction:column;gap:8px}
+.node{display:flex;align-items:center;gap:12px;background:#0f0c22;border:1px solid #ffffff12;
+  border-radius:12px;padding:11px 13px}
+.node .g{flex:0 0 38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  font-size:18px;font-weight:900;background:#ffffff08;color:var(--thread2)}
+.node .tx{flex:1;min-width:0}
+.node .tt{font-size:13.5px;font-weight:800;letter-spacing:.06em}
+.node .dd{font-size:10.5px;color:var(--dim);margin-top:2px;line-height:1.5}
+.pips{display:flex;gap:3px;margin-top:5px}
+.pip{width:13px;height:3px;border-radius:2px;background:#2a2545}
+.pip.on{background:var(--thread);box-shadow:0 0 6px #ffd98a99}
+.pip.tier{background:#2a2545;box-shadow:0 0 0 1px #c08cff55 inset}
+.buy{pointer-events:auto;cursor:pointer;border:none;font:inherit;flex:0 0 auto;
+  background:#ffd98a;color:#160f04;font-weight:800;font-size:12px;letter-spacing:.04em;
+  padding:9px 12px;border-radius:9px;min-width:66px;text-align:center;
+  font-variant-numeric:tabular-nums;transition:transform .12s}
+.buy:active{transform:scale(.94)}
+.buy.no{background:#1c1836;color:#5d5786;cursor:default}
+.buy.max{background:#1c1836;color:var(--thread);cursor:default}
+.buy.lock{background:#1c1836;color:var(--core);cursor:default;font-size:10.5px}
+
+/* 装備 */
+.slot{width:100%;max-width:460px;margin-bottom:18px}
+.slot h3{font-size:12px;letter-spacing:.3em;color:var(--thread);margin:0 0 3px 2px}
+.slot .sd{font-size:10.5px;color:#5d5786;margin:0 0 9px 2px}
+.gears{display:flex;flex-direction:column;gap:8px}
+.gear{pointer-events:auto;cursor:pointer;display:flex;align-items:center;gap:12px;
+  background:#0f0c22;border:1px solid #ffffff12;border-radius:12px;padding:11px 13px;
+  transition:transform .12s}
+.gear:active{transform:scale(.98)}
+.gear .g{flex:0 0 38px;height:38px;border-radius:10px;display:grid;place-items:center;
+  font-size:18px;font-weight:900;background:#ffffff08;color:var(--dim)}
+.gear .tx{flex:1;min-width:0}
+.gear .tt{font-size:13.5px;font-weight:800;letter-spacing:.06em}
+.gear .dd{font-size:10.5px;color:var(--dim);margin-top:2px;line-height:1.5}
+.gear .st{flex:0 0 auto;font-size:10.5px;letter-spacing:.1em;color:var(--dim);
+  font-variant-numeric:tabular-nums;text-align:right}
+.gear.equipped{border-color:#ffd98a77;background:linear-gradient(100deg,#241a0e,#0c0a1c)}
+.gear.equipped .g{color:var(--thread);box-shadow:0 0 0 1px #ffd98a44 inset}
+.gear.equipped .st{color:var(--thread);font-weight:800}
+.gear.locked{opacity:.5}
+.gear.craft .st{color:var(--dew)}
 
 /* ---------- レベルアップ カード ---------- */
 #levelup{z-index:30;background:#05040bd9;backdrop-filter:blur(7px);-webkit-backdrop-filter:blur(7px);
@@ -138,24 +229,30 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 .card.r2 .tt{color:#ffd98a}
 
 /* ---------- 結果 ---------- */
-#result .rank{font-size:clamp(80px,26vw,130px);font-weight:900;line-height:.9;
+#result .rank{font-size:clamp(64px,20vw,104px);font-weight:900;line-height:.9;
   background:linear-gradient(180deg,#fff,var(--thread) 60%,#ff9d4d);
   -webkit-background-clip:text;background-clip:text;color:transparent;filter:drop-shadow(0 0 30px #ffd98a66)}
 #result .verdict{font-size:13px;letter-spacing:.42em;text-indent:.42em;margin-top:2px;color:var(--thread2)}
-#result .flavor{font-size:11.5px;color:var(--dim);margin-top:14px;text-align:center;line-height:1.9;max-width:330px}
-.stats{width:100%;max-width:340px;margin:22px 0 24px}
+#result .nname{font-size:11px;letter-spacing:.24em;color:var(--dim);margin-top:10px}
+.loot{width:100%;max-width:340px;margin:18px 0 8px;display:flex;flex-direction:column;gap:7px}
+.lrow{display:flex;justify-content:space-between;align-items:center;font-size:12.5px;
+  padding:9px 13px;border-radius:10px;background:#ffffff06;border:1px solid #ffffff10;
+  letter-spacing:.08em;color:var(--dim)}
+.lrow b{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums}
+.lrow.lum b{color:var(--thread)} .lrow.dew b{color:var(--dew)} .lrow.core b{color:var(--core)}
+.lrow.miss{opacity:.42}
+.unlock{margin:10px 0 2px;font-size:12px;letter-spacing:.14em;color:var(--thread);
+  background:#ffd98a14;border:1px solid #ffd98a3a;border-radius:10px;padding:11px 14px;text-align:center}
+.stats{width:100%;max-width:340px;margin:14px 0 20px}
 .stat{display:flex;justify-content:space-between;align-items:baseline;
-  padding:9px 2px;border-bottom:1px solid #ffffff0d;font-size:12px;letter-spacing:.1em;color:var(--dim)}
-.stat b{font-size:17px;font-weight:800;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:0}
-.stat.hi b{color:var(--thread);text-shadow:0 0 14px #ffd98a55}
-.newbest{font-size:10px;letter-spacing:.3em;color:#160f04;background:var(--thread);
-  padding:2px 8px;border-radius:99px;margin-left:8px;font-weight:800;vertical-align:2px}
-.row{display:flex;gap:10px;align-items:center}
+  padding:7px 2px;border-bottom:1px solid #ffffff0d;font-size:11.5px;letter-spacing:.1em;color:var(--dim)}
+.stat b{font-size:15px;font-weight:800;color:var(--paper);font-variant-numeric:tabular-nums;letter-spacing:0}
 
 #howto{max-width:400px;font-size:12px;line-height:2.1;color:var(--dim);letter-spacing:.05em}
 #howto h3{font-size:11px;letter-spacing:.4em;color:var(--thread);margin-bottom:14px;text-indent:.4em}
 #howto em{color:var(--paper);font-style:normal;font-weight:700}
 #howto .sep{height:1px;background:#ffffff10;margin:14px 0}
+.hint{font-size:10.5px;color:#4a4470;letter-spacing:.1em;margin-top:16px;text-align:center;line-height:1.8}
 </style>
 </head>
 <body>
@@ -165,8 +262,8 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 <div id="hud" class="layer hide">
   <div class="top">
     <div id="hearts"></div>
-    <div id="clock">00:00<small>NUIYO</small></div>
-    <div id="score">0<small>SCORE</small></div>
+    <div id="clock">00:00<small>のこり</small></div>
+    <div id="purse"><b id="hudLumen">0</b><small>光糸</small><span class="dw hide" id="hudDew">露 0</span></div>
   </div>
   <div id="chain"></div>
   <div id="unravel"><div class="k">解</div></div>
@@ -185,13 +282,13 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
     <div class="sub">NUIYO</div>
     <div class="tag">夜は綻び、綻びからは獣が滴る。<br>お前の指先だけが、まだ光の糸を引ける。</div>
   </div>
-  <div class="styles" id="styles"></div>
+  <div style="height:30px"></div>
   <button class="btn on" id="startBtn">縫 い 始 め る</button>
   <div class="row" style="margin-top:18px">
     <button class="btn ghost on" id="howBtn">遊 び 方</button>
     <button class="btn ghost on" id="muteBtn">♪ ON</button>
   </div>
-  <div style="font-size:10px;letter-spacing:.2em;color:#4a4470;margin-top:22px" id="bestLine"></div>
+  <div class="hint" id="bestLine"></div>
 </div>
 
 <!-- 遊び方 -->
@@ -200,17 +297,64 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
     <h3>縫 い 方</h3>
     <div><em>①</em> 画面をどこでも押さえて、指を滑らせる。<br>離すまで、その方向へ走り続ける。</div>
     <div class="sep"></div>
-    <div><em>②</em> 走った跡には<em>光の糸</em>が残る。<br>糸が<em>自分と交差して輪を閉じた瞬間</em>、<br>輪の内側にいた獣は<em>全て縫い落とされる</em>。</div>
+    <div><em>②</em> 走った跡には<em>光の糸</em>が残る。<br>糸が<em>自分と交わって輪を閉じた瞬間</em>、<br>輪の内側にいた獣は<em>全て縫い落とされる</em>。</div>
     <div class="sep"></div>
-    <div><em>③</em> 大きく囲むほど威力が上がる。<br>続けざまに閉じれば<em>連鎖</em>が乗り、倍率は跳ね上がる。</div>
+    <div><em>③</em> 針を自分の糸に近づけると、<br><em>閉じる先までの破線</em>が浮かぶ。それが目印。</div>
     <div class="sep"></div>
-    <div><em>※</em> 大きく囲むほど、糸は多く食われる。<br>使い切った糸は、走りながら伸び直す。</div>
+    <div><em>④</em> 大きく囲むほど威力が上がる。<br>続けざまに閉じれば<em>連鎖</em>が乗る。<br>ただし大きく囲むほど、糸を多く食う。</div>
     <div class="sep"></div>
-    <div><em>④</em> 「解」が満ちたら<em>短く画面を叩く</em>。<br>夜が裂け、時が緩み、糸を引き直せる。</div>
+    <div><em>⑤</em> <span style="color:#7df0ff">青い光</span>はその夜のレベル。<br><span style="color:#ffd98a">金の糸巻き</span>は<em>持ち帰れる光糸</em>。<br>拾った分は、負けても持ち帰れる。</div>
     <div class="sep"></div>
-    <div><em>⑤</em> 10分。獣の主を縫い切れば夜明けだ。</div>
+    <div><em>⑥</em> 「解」が満ちたら<em>短く画面を叩く</em>。<br>夜が裂け、時が緩む。</div>
   </div>
-  <button class="btn on" id="helpBack" style="margin-top:28px">戻 る</button>
+  <button class="btn on" id="helpBack" style="margin-top:26px">戻 る</button>
+</div>
+
+<!-- 拠点 -->
+<div id="base" class="screen scroll hide">
+  <div class="bar"><h2>拠 点</h2><span style="font-size:11px;letter-spacing:.2em;color:var(--dim)" id="baseSub"></span></div>
+  <div class="purse" id="basePurse"></div>
+  <div class="menu">
+    <div class="mitem prime on" id="goNights">
+      <div class="g">夜</div>
+      <div><div class="tt">夜へ挑む</div><div class="dd" id="goNightsSub">綻びを縫いに行く</div></div>
+    </div>
+    <div class="mitem on" id="goLoom">
+      <div class="g">織</div>
+      <div><div class="tt">織 機</div><div class="dd" id="goLoomSub">光糸で恒久的に鍛える</div></div>
+    </div>
+    <div class="mitem on" id="goGear">
+      <div class="g">装</div>
+      <div><div class="tt">装 い</div><div class="dd" id="goGearSub">針・糸・環を選ぶ</div></div>
+    </div>
+  </div>
+  <div class="row" style="margin-top:22px">
+    <button class="btn ghost on" id="baseHelp">遊 び 方</button>
+    <button class="btn ghost on" id="baseTitle">題 名 へ</button>
+  </div>
+  <div class="hint">記録を消すには長押し → <button class="btn ghost on" id="wipeBtn" style="padding:6px 14px;font-size:10px">初期化</button></div>
+</div>
+
+<!-- 夜選択 -->
+<div id="nightsel" class="screen scroll hide">
+  <div class="bar"><button class="back on" id="nsBack">‹ 拠点</button><h2>夜 を 選 ぶ</h2><span style="width:44px"></span></div>
+  <div class="purse" id="nsPurse"></div>
+  <div class="nights" id="nightList"></div>
+</div>
+
+<!-- 織機 -->
+<div id="loom" class="screen scroll hide">
+  <div class="bar"><button class="back on" id="loomBack">‹ 拠点</button><h2>織 機</h2><span style="width:44px"></span></div>
+  <div class="purse" id="loomPurse"></div>
+  <div id="loomBody" style="width:100%;max-width:460px;margin:0 auto"></div>
+  <div class="hint" id="loomHint"></div>
+</div>
+
+<!-- 装備 -->
+<div id="gear" class="screen scroll hide">
+  <div class="bar"><button class="back on" id="gearBack">‹ 拠点</button><h2>装 い</h2><span style="width:44px"></span></div>
+  <div class="purse" id="gearPurse"></div>
+  <div id="gearBody" style="width:100%;max-width:460px;margin:0 auto"></div>
 </div>
 
 <!-- レベルアップ -->
@@ -229,14 +373,18 @@ html,body{height:100%;overflow:hidden;background:var(--void);color:var(--paper);
 </div>
 
 <!-- 結果 -->
-<div id="result" class="screen hide">
-  <div class="rank" id="rank">A</div>
-  <div class="verdict" id="verdict">夜明け</div>
-  <div class="flavor" id="flavor"></div>
+<div id="result" class="screen scroll hide">
+  <div style="text-align:center;width:100%">
+    <div class="rank" id="rank">A</div>
+    <div class="verdict" id="verdict">突破</div>
+    <div class="nname" id="rNight"></div>
+  </div>
+  <div class="loot" id="loot"></div>
+  <div id="unlockBox"></div>
   <div class="stats" id="stats"></div>
-  <button class="btn on" id="againBtn">も う 一 度</button>
-  <div style="height:12px"></div>
-  <button class="btn ghost on" id="titleBtn">題 名 へ</button>
+  <button class="btn on" id="toBaseBtn">拠 点 へ</button>
+  <div style="height:10px"></div>
+  <button class="btn ghost on" id="againBtn">も う 一 度</button>
 </div>
 
 <script type="module" src="./src/main.js"></script>
