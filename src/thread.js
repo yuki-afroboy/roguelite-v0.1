@@ -108,6 +108,43 @@ export class Thread {
     return false;
   }
 
+  /**
+   * 「いま輪を閉じるとしたら、どこで、どれだけ囲えるか」を返す。
+   *
+   * 計測で分かった最悪の失敗は、大きく回り込みすぎて糸が届かず、
+   * 何の反応も返らないまま死ぬこと（3回試して輪ゼロ・キルゼロ）。
+   * 閉じられる相手が視界にあることを常時見せて、この無言状態を消す。
+   */
+  previewClose(range = 130) {
+    const p = this.p, n = p.length;
+    if (n < 10) return null;
+    const hx = this.hx, hy = this.hy;
+    const last = n - 4 - SKIP * 2;
+    const r2 = range * range;
+
+    for (let i = 0; i < last; i += 2) {
+      const cx = p[i], cy = p[i + 1], dx = p[i + 2], dy = p[i + 3];
+      if (pointSegDist2(hx, hy, cx, cy, dx, dy) > r2) continue;
+
+      const ex = dx - cx, ey = dy - cy;
+      const len2 = ex * ex + ey * ey;
+      let t = len2 ? ((hx - cx) * ex + (hy - cy) * ey) / len2 : 0;
+      t = t < 0 ? 0 : t > 1 ? 1 : t;
+      const X = cx + ex * t, Y = cy + ey * t;
+
+      const flat = [X, Y];
+      for (let k = i + 2; k < n; k += 2) flat.push(p[k], p[k + 1]);
+      flat.push(hx, hy);
+      const area = Math.abs(polyArea2(flat)) * 0.5;
+      if (area < MIN_AREA) continue;
+
+      const d = Math.sqrt(pointSegDist2(hx, hy, cx, cy, dx, dy));
+      // 0=遠い 1=触れる寸前。これがそのまま表示の濃さになる
+      return { flat, area, x: X, y: Y, near: clamp(1 - (d - SNAP) / (range - SNAP), 0, 1) };
+    }
+    return null;
+  }
+
   update(dt) { this.age += dt; }
 
   /**

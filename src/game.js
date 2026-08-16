@@ -220,8 +220,17 @@ export class Game {
     this.cam.x = damp(this.cam.x, tx2, 7, dt);
     this.cam.y = damp(this.cam.y, ty2, 7, dt);
 
-    // チュートリアル
-    if (this.tutorial === 0 && this.stitches > 0) {
+    // 導入の言葉。ここは「輪をまだ一度も閉じていない人」を最優先で拾う。
+    // 計測では、大きく回りすぎた人が最後まで一度も閉じられずに死んでいた。
+    if (this.stitches === 0) {
+      if (this.tutorial === 0 && this.t > 11) {
+        this.tutorial = 0.5;
+        this.toast('自分の糸に触れると、輪が閉じる', 3.4);
+      } else if (this.tutorial === 0.5 && this.t > 24) {
+        this.tutorial = 0.6;
+        this.toast('小さく回れ。糸の届く範囲で', 3.4);
+      }
+    } else if (this.tutorial < 1) {
       this.tutorial = 1;
       this.toast('輪の内側は、すべて縫い落ちる', 3.0);
     } else if (this.tutorial === 1 && this.stitches >= 6) {
@@ -307,6 +316,15 @@ export class Game {
       if (killed >= 3) fxPop(b.cx, b.cy, `${killed}`, col, 15 + Math.min(killed, 26));
       sfxStitch(Math.max(1, this.chain), clamp(killed / 22, 0, 1));
       this.gauge = clamp(this.gauge + killed * 0.009 * st.unravelGain, 0, 1);
+
+      // 縫った直後は針が身を守る。
+      // 「囲む」には獣の隣にいる必要があり、獣は触れると痛い ── つまり
+      // 上手く遊ぶほど削られる、という矛盾が構造的にあった（計測では
+      // 30秒で40〜80体倒す操作をしても22秒で死んでいた）。
+      // 核の動作そのものに安全を紐付けて、この矛盾を解く。
+      if (!isEcho) {
+        this.player.inv = Math.max(this.player.inv, clamp(0.45 + killed * 0.025, 0.45, 1.1));
+      }
     } else {
       sfxEmpty();   // 空振りは控えめに。輪を閉じた手応えだけは返す
     }
@@ -393,16 +411,26 @@ export class Game {
       this.spawnBoss(7600, true);
     }
 
-    // 湧きの脈：22秒ごとに一気に押し寄せる
+    // 湧きの脈：20秒強ごとに一気に押し寄せる
     this.surgeT -= dt;
-    if (this.surgeT <= 0) { this.surgeT = rnd(20, 26); this.surge = 4.5; }
+    if (this.surgeT <= 0) { this.surgeT = rnd(19, 25); this.surge = 4.5; }
     if (this.surge > 0) this.surge -= dt;
 
-    let rate = 1.8 + t * 0.045;
-    if (this.surge > 0) rate *= 2.3;
-    if (this.boss.on) rate *= 0.5;
-    rate = Math.min(rate, 30);
-    if (this.swarm.alive > 430) rate *= 0.22;
+    // 「一定の速さで湧かす」のをやめ、「目標密度へ近づける」方式にする。
+    //
+    // 旧実装は湧き速度そのものを時間で上げていたため、一度倒し遅れると
+    // 敵が上限(680)に張り付いて画面が壁になり、輪も見えず立て直せなかった
+    // （無敵で通した計測で4分以降ずっと 680）。
+    // 目標値を持たせると、遅れている人には自動的に猶予が生まれ、
+    // 倒せている人には途切れず湧き続ける。
+    let target = 20 + t * 0.44;                       // 0分:20 → 10分:284
+    if (this.surge > 0) target *= 1.5;
+    if (this.boss.on) target = Math.min(target, 150);
+    target = Math.min(target, 330);                   // ここが画面の読みやすさの限界
+
+    const deficit = target - this.swarm.alive;
+    const ceiling = 2.2 + t * 0.05;                   // 開幕にどっと湧かせない
+    const rate = clamp(deficit * 0.5, 0, ceiling);
 
     this.spawnAcc += rate * dt;
     while (this.spawnAcc >= 1) {
@@ -479,9 +507,9 @@ export class Game {
       const dx = e.x - p.x, dy = e.y - p.y;
       const d = Math.hypot(dx, dy);
       if (d > 110 || d < 0.01) continue;
-      const k = (1 - d / 110) * 420;
+      const k = (1 - d / 110) * 760;
       e.vx += (dx / d) * k; e.vy += (dy / d) * k;
-      e.frozen = Math.max(e.frozen, 0.18);
+      e.frozen = Math.max(e.frozen, 0.36);   // 押した直後に戻られると隙にならない
     }
 
     sfxHurt();
@@ -524,10 +552,20 @@ export class Game {
   applyCard(card) {
     this.levels[card.id] = (this.levels[card.id] || 0) + 1;
     card.apply(this.stats);
+
+    // 糸を編み直すたび、綻びも1つ繕われる。
+    // 10分の運びに対して回復手段が皆無で、6回被弾した時点で終わっていた
+    // （計測では全モデルが6回被弾＝40〜60秒で死亡）。成長と回復を同じ動作に束ねる。
+    const before = this.player.hp;
+    this.player.hp = Math.min(this.stats.maxHp, this.player.hp + 1);
     if (card.id === 'hp') this.player.hp = this.stats.maxHp;
     if (this.stats.heal) {
       this.player.hp = Math.min(this.stats.maxHp, this.player.hp + this.stats.heal);
       this.stats.heal = 0;
+    }
+    if (this.player.hp > before) {
+      fxRing(this.player.x, this.player.y, 10, 130, .55, '255,120,150', 3);
+      fxBurst(this.player.x, this.player.y, 14, '255,140,170', { spd: 150, life: .6, size: 2.4 });
     }
     this.thread.maxPts = this.stats.threadPts;
     this.state = STATE.RUN;
@@ -618,6 +656,7 @@ export class Game {
 
     this.drawWeave(ctx, view);
     this.drawBurns(ctx);
+    this.drawClosePreview(ctx);
     this.motes.draw(ctx, view);
     this.swarm.draw(ctx, view, ox, oy, this.dpr);
     this.boss.draw(ctx);
@@ -657,6 +696,55 @@ export class Game {
         ctx.fillStyle = `rgba(140,120,255,${a})`;
         ctx.fillRect(x - 1.5, y - 1.5, 3, 3);
       }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * 閉じかけの輪を先読みして描く。
+   * 「針を自分の糸に近づけると何かが起きる」を、文章ではなく画面で教える部分。
+   * 近づくほど濃くなるので、届かない大回りをしている人にも距離感が伝わる。
+   */
+  drawClosePreview(ctx) {
+    if (this.state !== STATE.RUN) return;
+    const pv = this.thread.previewClose();
+    this._preview = pv;
+    if (!pv) return;
+
+    const f = pv.flat;
+    const a = pv.near;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 囲われる領域。遠いうちは塗らない（見えないものに塗り潰しの負荷は払わない）
+    if (a > 0.12) {
+      ctx.beginPath();
+      ctx.moveTo(f[0], f[1]);
+      for (let i = 2; i < f.length; i += 2) ctx.lineTo(f[i], f[i + 1]);
+      ctx.closePath();
+      ctx.fillStyle = `rgba(255,214,140,${a * 0.06})`;
+      ctx.fill();
+    }
+
+    // 閉じ口（針 → 触れる先）
+    ctx.setLineDash([5, 7]);
+    ctx.lineDashOffset = -this.t * 42;
+    ctx.lineWidth = 1 + a * 1.6;
+    ctx.strokeStyle = `rgba(255,228,170,${0.18 + a * 0.62})`;
+    ctx.beginPath();
+    ctx.moveTo(this.thread.hx, this.thread.hy);
+    ctx.lineTo(pv.x, pv.y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // 触れる寸前だけ、閉じ口に光点を置く
+    if (a > 0.55) {
+      const r = 4 + a * 5;
+      const g = ctx.createRadialGradient(pv.x, pv.y, 0, pv.x, pv.y, r * 2.4);
+      g.addColorStop(0, `rgba(255,255,235,${a})`);
+      g.addColorStop(1, 'rgba(255,200,120,0)');
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(pv.x, pv.y, r * 2.4, 0, TAU); ctx.fill();
     }
     ctx.restore();
   }

@@ -6,9 +6,9 @@ import { fxBurst, fxSoul, fxRing, fxShake } from './fx.js';
 // 速度はプレイヤー(約216px/s)の 4〜6 割。追い付かれはしないが、
 // 走れば必ず背後に尾を引いて群れが繋がる ── その尾を巻き取るのがこのゲームの気持ち良さ。
 export const KIND = {
-  hotsure: { k: '綻', hp: 7, r: 11, spd: 78, col: [157, 140, 255], xp: 1, sc: 10, ai: 'chase' },
+  hotsure: { k: '綻', hp: 7, r: 11, spd: 78, col: [157, 140, 255], xp: 1, sc: 10, ai: 'chase', stand: 42 },
   shitsu: { k: '疾', hp: 5, r: 9.5, spd: 112, col: [125, 240, 255], xp: 1, sc: 14, ai: 'dash' },
-  retsu: { k: '裂', hp: 16, r: 15, spd: 76, col: [255, 138, 208], xp: 2, sc: 24, ai: 'chase', split: 3 },
+  retsu: { k: '裂', hp: 16, r: 15, spd: 76, col: [255, 138, 208], xp: 2, sc: 24, ai: 'chase', split: 3, stand: 48 },
   kake: { k: '欠', hp: 4, r: 7, spd: 124, col: [255, 176, 224], xp: 1, sc: 6, ai: 'chase' },
   toga: { k: '咎', hp: 14, r: 13, spd: 58, col: [255, 107, 107], xp: 3, sc: 32, ai: 'ranged' },
   yoroi: { k: '鎧', hp: 54, r: 19, spd: 52, col: [255, 196, 107], xp: 6, sc: 70, ai: 'chase', armor: 0.45 },
@@ -132,7 +132,7 @@ export class Swarm {
       this.a.push({
         on: false, x: 0, y: 0, vx: 0, vy: 0, hp: 1, mhp: 1, r: 10, kind: 'hotsure',
         spd: 40, t: 0, cd: 0, flash: 0, v: 0, rot: 0, spin: 0, sc: 1, elite: false,
-        frozen: 0, hitId: 0,
+        frozen: 0, hitId: 0, lunge: 0,
       });
     }
     this.alive = 0;
@@ -156,7 +156,7 @@ export class Swarm {
       e.spd = d.spd * (elite ? 0.82 : rnd(0.9, 1.12));
       e.t = rnd(TAU); e.cd = rnd(0.4, 2.2); e.flash = 0;
       e.v = rndInt(0, 2); e.rot = rnd(TAU); e.spin = rnd(-0.5, 0.5);
-      e.elite = elite; e.frozen = 0; e.hitId = 0;
+      e.elite = elite; e.frozen = 0; e.hitId = 0; e.lunge = 0;
       this.alive++;
       return e;
     }
@@ -211,9 +211,23 @@ export class Swarm {
           G.bullets.spawn(e.x, e.y, dx * 155, dy * 155, 7, [255, 107, 107]);
         }
       } else {
-        const sway = Math.sin(e.t * 1.6 + e.v) * 0.28;
-        ax = (dx - dy * sway) * spd;
-        ay = (dy + dx * sway) * spd;
+        // 間合いを取り、時折だけ跳びかかる。
+        //
+        // 以前は距離に関係なく直進してきたため、囲むために回り込む動線上へ
+        // 常に体が置かれ、触れ続けて削られていた（計測では被弾の 45/45 件が
+        // この基本種で、上手く回している最中でも約2秒に1回当たっていた）。
+        // 接触を「連続的な摩耗」から「読み取れる一瞬」に変える。
+        const stand = d.stand || 0;
+        if (stand > 0) {
+          e.cd -= dt;
+          if (e.cd <= 0) { e.cd = rnd(2.4, 4.2); e.lunge = 0.5; }
+          if (e.lunge > 0) e.lunge -= dt;
+        }
+        const closing = stand === 0 || e.lunge > 0 || dl > stand;
+        const sway = Math.sin(e.t * 1.6 + e.v) * (closing ? 0.28 : 0.95);
+        const push = closing ? 1 : -0.3;
+        ax = (dx * push - dy * sway) * spd;
+        ay = (dy * push + dx * sway) * spd;
         e.vx = damp(e.vx, ax, 5, dt); e.vy = damp(e.vy, ay, 5, dt);
       }
 
@@ -242,9 +256,24 @@ export class Swarm {
       // 遠く離れすぎた個体は回収（画面外で無限に彷徨わせない）
       if (dist2(e.x, e.y, px, py) > 1700 * 1700) { e.on = false; this.alive--; continue; }
 
-      // 接触（芯が触れたときだけ。掠り判定で理不尽にならないよう内側で取る）
+      // 接触。
+      //
+      // 「囲む」には必ず群れの中へ戻る必要があり、群れは常にこちらへ寄ってくる。
+      // つまり回り込む動線上には必ず体が置かれる ── これは間合いを調整しても
+      // 消えない、機構そのものが持つ幾何。実測でも被弾の 100% が基本種だった。
+      // そこで基本種の「ただ触れているだけ」は痛くせず、押しのけて通す。
+      // 針は布を裂かずに分けて進む、という筋も通る。
+      // 痛いのは跳びかかってきた個体・精鋭・専門種だけ。
       const rr = e.r * 0.78 + G.player.r * 0.8;
-      if (dist2(e.x, e.y, px, py) < rr * rr) G.hurtPlayer(e);
+      if (dist2(e.x, e.y, px, py) < rr * rr) {
+        if (!d.stand || e.lunge > 0 || e.elite) {
+          G.hurtPlayer(e);
+        } else {
+          const ox = e.x - px, oy = e.y - py;
+          const od = Math.hypot(ox, oy) || 1;
+          e.vx += (ox / od) * 300; e.vy += (oy / od) * 300;
+        }
+      }
 
       // 針先の熱
       if (G.stats.needle > 0 && G.thread.touchesHot(e.x, e.y, e.r + 7)) {
@@ -295,7 +324,7 @@ export class Swarm {
       if (!e.on) continue;
       if (e.x < view.x0 || e.x > view.x1 || e.y < view.y0 || e.y > view.y1) continue;
       const sp = sprites.get(e.flash > 0.35 ? e.kind + '!' : e.kind)[e.v];
-      const s = e.sc * (1 + Math.sin(e.t * 5 + e.v) * 0.035) * dpr;
+      const s = e.sc * (1 + Math.sin(e.t * 5 + e.v) * 0.035 + (e.lunge > 0 ? 0.16 : 0)) * dpr;
       const ang = Math.atan2(e.vy, e.vx);
       const co = Math.cos(ang) * s, si = Math.sin(ang) * s;
       ctx.setTransform(co, si, -si, co, (e.x + ox) * dpr, (e.y + oy) * dpr);
